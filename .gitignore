@@ -1,0 +1,4 @@
+.idea/*
+spring-data-elasticsearch-test/spring-data-elasticsearch-test.iml
+/spring-data-elasticsearch-test/target
+
