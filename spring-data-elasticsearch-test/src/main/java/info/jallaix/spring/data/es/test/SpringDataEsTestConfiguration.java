@@ -12,7 +12,6 @@ import org.springframework.data.elasticsearch.repository.config.EnableElasticsea
  * Spring configuration for Elasticsearch repository tests
  */
 @Configuration
-@EnableElasticsearchRepositories(basePackages = "info.jallaix.common.language.dao")
 public class SpringDataEsTestConfiguration {
 
     /**
@@ -23,7 +22,6 @@ public class SpringDataEsTestConfiguration {
     public Client elasticsearchClient() {
 
         NodeBuilder nodeBuilder = NodeBuilder.nodeBuilder();
-        nodeBuilder.getSettings().put("index.store.type", "memory");
         nodeBuilder.local(true);
 
         return nodeBuilder.node().client();

@@ -7,7 +7,6 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
-import org.springframework.test.context.ContextConfiguration;
 
 import java.io.Serializable;
 import java.lang.reflect.ParameterizedType;
@@ -34,7 +33,7 @@ import static org.junit.Assert.*;
  *     <li>Saving a list of existing documents replaces the documents in the index.</li>
  * </ul>
  */
-@ContextConfiguration(classes = SpringDataEsTestConfiguration.class)
+@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
 
     /**
