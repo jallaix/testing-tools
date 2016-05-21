@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
@@ -54,8 +55,8 @@ import static org.junit.Assert.*;
  *     <li>Saving a list of existing documents replaces the documents in the index.</li>
  * </ul>
  */
-@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unused"})
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
+
 
     /**
      * Test documents loader
@@ -66,6 +67,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Elasticsearch client
      */
+    @SuppressWarnings("SpringJavaAutowiringInspection")
     @Autowired
     private Client esClient;
 
@@ -119,30 +121,6 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      * Document identifier
      */
     private Field documentIdField;
-
-    /**
-     * Get the Elastic document metadata
-     * @return The Elastic document metadata
-     */
-    @SuppressWarnings("unused")
-    protected Document getDocumentMetadata() { return documentMetadata; }
-
-    /**
-     * Get the identifier value of a document
-     * @param document The document
-     * @return The found identifier value
-     */
-    protected ID getIdFieldValue(T document) {
-
-        try {
-            @SuppressWarnings("unchecked")
-            ID id = (ID)documentIdField.get(document);
-            return id;
-        } catch (IllegalAccessException e) {
-            logger.error(null, e);
-            return null;
-        }
-    }
 
     /**
      * Find the class of the tested document
@@ -212,6 +190,13 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
+     * Get the Elastic document metadata
+     * @return The Elastic document metadata
+     */
+    @SuppressWarnings("unused")
+    protected Document getDocumentMetadata() { return documentMetadata; }
+
+    /**
      * Count the number of typed documents in the index.
      * @return The number of typed documents found
      */
@@ -224,8 +209,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
-     * Count the number of typed documents in the index.
-     * @return The number of typed documents found
+     * Find all typed documents in the index.
+     * @return The typed documents found
      */
     protected List<T> findAllDocumentsWithClient() {
 
@@ -242,6 +227,44 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
+     * Find all typed document belonging to a page
+     * @param pageNo The page number to get
+     * @return The typed documents found
+     */
+    protected List<T> findAllDocumentsByPageWithClient(int pageNo) {
+
+        List<T> documents = new ArrayList<>();
+
+        esClient.prepareSearch(documentMetadata.indexName())
+                .setTypes(documentMetadata.type())
+                .setFrom(pageNo * getPageSize())
+                .setSize(getPageSize())
+                .execute()
+                .actionGet()
+                .getHits()
+                .forEach(hit -> documents.add(fromJson(hit)));
+
+        return documents;
+    }
+
+    /**
+     * Get the identifier value of a document
+     * @param document The document
+     * @return The found identifier value
+     */
+    protected ID getIdFieldValue(T document) {
+
+        try {
+            @SuppressWarnings("unchecked")
+            ID id = (ID)documentIdField.get(document);
+            return id;
+        } catch (IllegalAccessException e) {
+            logger.error(null, e);
+            return null;
+        }
+    }
+
+    /**
      * Return a new document for insertion.
      * @return A document that will be inserted
      */
@@ -254,9 +277,10 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     protected abstract T newDocumentToUpdate();
 
     /**
-     * JSON object mapper
+     * Return the size of a page to get
+     * @return The size of a page to get
      */
-    private ObjectMapper mapper = new ObjectMapper();
+    protected abstract int getPageSize();
 
     /**
      * Convert an Elasticsearch hit to an entity
@@ -266,7 +290,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     private T fromJson(SearchHit hit) {
 
         try {
-            return mapper.readValue(hit.getSourceAsString(), documentClass);
+            return new ObjectMapper().readValue(hit.getSourceAsString(), documentClass);
         } catch (IOException e) {
             logger.error(null, e);
             return null;
@@ -349,7 +373,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         List<T> toInsert = new ArrayList<>(1);
         toInsert.add(newDocumentToInsert());
         List<T> inserted = new ArrayList<>(1);
-        repository.save(toInsert).forEach(inserted::add);
+        repository.save(toInsert)
+                .forEach(inserted::add);
 
         assertEquals(testDocumentsLoader.getLoadedDocumentCount() + 1, countDocumentsWithClient());
         assertArrayEquals(toInsert.toArray(), inserted.toArray());
@@ -390,7 +415,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         List<T> toUpdate = new ArrayList<>(1);
         toUpdate.add(newDocumentToUpdate());
         List<T> updated = new ArrayList<>(1);
-        repository.save(toUpdate).forEach(updated::add);
+        repository.save(toUpdate)
+                .forEach(updated::add);
 
         assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
         assertArrayEquals(toUpdate.toArray(), updated.toArray());
@@ -402,7 +428,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Finding a list of all existing documents returns an iterable with all these documents
+     * Finding a list of all existing documents returns an iterable with all these documents.
      */
     @Test
     public void findAllDocuments() {
@@ -410,22 +436,58 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         List<T> initialList = findAllDocumentsWithClient();
 
         List<T> foundList = new ArrayList<>();
-        repository.findAll().forEach(foundList::add);
+        repository.findAll()
+                .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
     }
 
     /**
-     * Finding a list existing documents by identifier returns an iterable with all these documents
+     * Finding a list of existing documents by identifier returns an iterable with all these documents.
      */
     @Test
     public void findAllDocumentsByIdentifier() {
 
         List<T> initialList = findAllDocumentsWithClient();
-        List<ID> initialKeys = initialList.stream().map(this::getIdFieldValue).collect(Collectors.toList());
+        List<ID> initialKeys = initialList.stream()
+                .map(this::getIdFieldValue)
+                .collect(Collectors.toList());
 
         List<T> foundList = new ArrayList<>();
-        repository.findAll(initialKeys).forEach(foundList::add);
+        repository.findAll(initialKeys)
+                .forEach(foundList::add);
+
+        assertArrayEquals(initialList.toArray(), foundList.toArray());
+    }
+
+    /**
+     * Finding a page of existing documents returns an iterable with all these documents.
+     */
+    @Test
+    public void findAllDocumentByPage() {
+
+        // Define the page parameters
+        long documentsCount = countDocumentsWithClient();
+        if (documentsCount == 0)
+            throw new IllegalArgumentException("No document loaded");
+        int pageSize = getPageSize();
+        if (pageSize <=0)
+            throw new IllegalArgumentException("Page size must be positive");
+        int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+
+        // Find first page
+        List<T> initialList = findAllDocumentsByPageWithClient(0);
+        List<T> foundList = new ArrayList<>();
+        repository.findAll(new PageRequest(0, pageSize))
+                .forEach(foundList::add);
+
+        assertArrayEquals(initialList.toArray(), foundList.toArray());
+
+        // Find last page
+        initialList = findAllDocumentsByPageWithClient(nbPages - 1);
+        foundList.clear();
+        repository.findAll(new PageRequest(nbPages - 1, pageSize))
+                .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
     }
