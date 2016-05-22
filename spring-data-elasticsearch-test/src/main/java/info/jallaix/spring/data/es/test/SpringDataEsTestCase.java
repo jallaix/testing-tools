@@ -549,6 +549,26 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      */
     @Test
     public void findOneMissingDocument() {
-        fail("TODO");
+
+        ID id = getIdFieldValue(newDocumentToInsert());
+        T found = repository.findOne(id);
+
+        assertNull(found);
+    }
+
+    /**
+     * Finding a document that exists returns this document
+     */
+    @Test
+    public void findOneExistingDocument() {
+
+        T document = newDocumentToUpdate();
+        ID id = getIdFieldValue(document);
+
+        T found = repository.findOne(id);
+        ID foundId = getIdFieldValue(document);
+
+        assertNotNull(found);
+        assertEquals(id, foundId);
     }
 }
