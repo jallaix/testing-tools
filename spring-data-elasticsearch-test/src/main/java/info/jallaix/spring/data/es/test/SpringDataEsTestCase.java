@@ -23,8 +23,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
@@ -34,7 +33,7 @@ import static org.junit.Assert.*;
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br/>
  * It also performs generic CRUD tests on the tested repository.<br/><br/>
  *
- * The repository must verify the following tests related to <b>indexing</b> or <b>saving</b> that have the same behavior :
+ * The repository must verify the following tests related to document <b>indexing</b> or <b>saving</b> (same behavior) :
  * <ul>
  *     <li>Indexing a null document throws an IllegalArgumentException.</li>
  *     <li>Saving a null document throws an IllegalArgumentException.</li>
@@ -46,17 +45,29 @@ import static org.junit.Assert.*;
  *     <li>Saving an existing document replaces the document in the index.</li>
  *     <li>Saving a list of existing documents replaces the documents in the index.</li>
  * </ul>
- * The repository must verify the following tests related to <b>finding</b> :
+ * The repository must verify the following tests related to document <b>finding</b> :
  * <ul>
- *     <li>Indexing a null document throws an IllegalArgumentException.</li>
- *     <li>Saving a null document throws an IllegalArgumentException.</li>
- *     <li>Saving a list of documents with one null throws an IllegalArgumentException and no document is indexed.</li>
- *     <li>Indexing a new document inserts the document in the index.</li>
- *     <li>Saving a new document inserts the document in the index.</li>
- *     <li>Saving a list of new documents inserts the documents in the index.</li>
- *     <li>Indexing an existing document replaces the document in the index.</li>
- *     <li>Saving an existing document replaces the document in the index.</li>
- *     <li>Saving a list of existing documents replaces the documents in the index.</li>
+ *     <li>Finding a list of all existing documents returns an iterable with all these documents.</li>
+ *     <li>Finding a list of existing documents by identifier returns an iterable with all these documents.</li>
+ *     <li>Finding a page of sorted existing documents returns an iterable with all these sorted documents.</li>
+ *     <li>Finding a page of existing documents returns an iterable with all these documents.</li>
+ *     <li>Finding a document with a null identifier throws an ActionRequestValidationException.</li>
+ *     <li>Finding a document that doesn't exist returns a null document.</li>
+ *     <li>Finding a document that exists returns this document.</li>
+ *     <li>Testing the existence of a document with a null identifier throws an ActionRequestValidationException.</li>
+ *     <li>Testing the existence of a document that doesn't exist returns false.</li>
+ *     <li>Testing the existence of a document that exists returns true.</li>
+ *     <li>Counting the number of documents returns the number of documents in the index type</li>
+ * </ul>
+ * The repository must verify the following tests related to document <b>deleting</b> :
+ * <ul>
+ *     <li>Deleting all documents leaves an empty index type.</li>
+ *     <li>Deleting a missing document set doesn't remove these documents from the index type.</li>
+ *     <li>Deleting an existing document set removes these documents from the index type.</li>
+ *     <li>Deleting a missing document set doesn't remove this document from the index type.</li>
+ *     <li>Deleting an existing document set removes this document from the index type.</li>
+ *     <li>Deleting a missing document by identifier set doesn't remove this document from the index type.</li>
+ *     <li>Deleting an existing document by identifier set removes this document from the index type.</li>
  * </ul>
  */
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
@@ -488,7 +499,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
      */
     @Test
-    public void findAllDocumentByPage() {
+    public void findAllDocumentsByPage() {
 
         // Define the page parameters
         long documentsCount = countDocumentsWithClient();
@@ -521,7 +532,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      * Finding a page of existing documents returns an iterable with all these documents.
      */
     @Test
-    public void findAllDocumentSorted() {
+    public void findAllDocumentsSorted() {
 
         // Define sorting parameter
         Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
@@ -536,16 +547,18 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
-     * Finding a document with a null identifier throws an ActionRequestValidationException
+     * Finding a document with a null identifier throws an ActionRequestValidationException.
      */
     @Test(expected=ActionRequestValidationException.class)
     public void findOneNullDocument() {
 
         repository.findOne(null);
+
+        fail("Should thrown an ActionRequestValidationException");
     }
 
     /**
-     * Finding a document that doesn't exist returns a null document
+     * Finding a document that doesn't exist returns a null document.
      */
     @Test
     public void findOneMissingDocument() {
@@ -557,7 +570,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
-     * Finding a document that exists returns this document
+     * Finding a document that exists returns this document.
      */
     @Test
     public void findOneExistingDocument() {
@@ -570,5 +583,131 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         assertNotNull(found);
         assertEquals(id, foundId);
+    }
+
+    /**
+     * Testing the existence of a document with a null identifier throws an ActionRequestValidationException.
+     */
+    @Test(expected=ActionRequestValidationException.class)
+    public void existOneNullDocument() {
+
+        repository.exists(null);
+
+        fail("Should thrown an ActionRequestValidationException");
+    }
+
+    /**
+     * Testing the existence of a document that doesn't exist returns false.
+     */
+    @Test
+    public void existOneMissingDocument() {
+
+        ID id = getIdFieldValue(newDocumentToInsert());
+        boolean exists = repository.exists(id);
+
+        assertFalse(exists);
+    }
+
+    /**
+     * Testing the existence of a document that exists returns true.
+     */
+    @Test
+    public void existOneExistingDocument() {
+
+        ID id = getIdFieldValue(newDocumentToUpdate());
+        boolean exists = repository.exists(id);
+
+        assertTrue(exists);
+    }
+
+    /**
+     * Counting the number of documents returns the number of documents in the index type
+     */
+    @Test
+    public void countDocuments() {
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), repository.count());
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                     Tests related to document deleting                                         */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Deleting all documents leaves an empty index type.
+     */
+    @Test
+    public void deleteAllDocuments() {
+
+        repository.deleteAll();
+
+        assertEquals(0, countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting a missing document set doesn't remove these documents from the index type.
+     */
+    @Test
+    public void deletingMissingDocumentSet() {
+
+        repository.delete(Collections.singletonList(newDocumentToInsert()));
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting an existing document set removes these documents from the index type.
+     */
+    @Test
+    public void deleteExistingDocumentSet() {
+
+        repository.delete(Collections.singletonList(newDocumentToUpdate()));
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting a missing document set doesn't remove this document from the index type.
+     */
+    @Test
+    public void deleteOneMissingDocument() {
+
+        repository.delete(newDocumentToInsert());
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting an existing document set removes this document from the index type.
+     */
+    @Test
+    public void deleteOneExistingDocument() {
+
+        repository.delete(newDocumentToUpdate());
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting a missing document by identifier set doesn't remove this document from the index type.
+     */
+    @Test
+    public void deleteOneMissingDocumentById() {
+
+        repository.delete(getIdFieldValue(newDocumentToInsert()));
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+    }
+
+    /**
+     * Deleting an existing document by identifier set removes this document from the index type.
+     */
+    @Test
+    public void deleteOneExistingDocumentById() {
+
+        repository.delete(getIdFieldValue(newDocumentToUpdate()));
+
+        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
     }
 }
