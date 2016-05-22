@@ -1,8 +1,10 @@
 package info.jallaix.spring.data.es.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.elasticsearch.action.ActionRequestValidationException;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.sort.SortOrder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import org.springframework.util.Assert;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -227,7 +231,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
-     * Find all typed document belonging to a page
+     * Find all typed document belonging to a page with sorting
      * @param pageNo The page number to get
      * @return The typed documents found
      */
@@ -239,6 +243,26 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
                 .setTypes(documentMetadata.type())
                 .setFrom(pageNo * getPageSize())
                 .setSize(getPageSize())
+                .addSort(documentIdField.getName(), SortOrder.DESC)
+                .execute()
+                .actionGet()
+                .getHits()
+                .forEach(hit -> documents.add(fromJson(hit)));
+
+        return documents;
+    }
+
+    /**
+     * Find all typed document with sorting
+     * @return The typed documents found
+     */
+    protected List<T> findAllDocumentsSortedWithClient() {
+
+        List<T> documents = new ArrayList<>();
+
+        esClient.prepareSearch(documentMetadata.indexName())
+                .setTypes(documentMetadata.type())
+                .addSort(documentIdField.getName(), SortOrder.DESC)
                 .execute()
                 .actionGet()
                 .getHits()
@@ -461,24 +485,25 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     }
 
     /**
-     * Finding a page of existing documents returns an iterable with all these documents.
+     * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
      */
     @Test
     public void findAllDocumentByPage() {
 
         // Define the page parameters
         long documentsCount = countDocumentsWithClient();
-        if (documentsCount == 0)
-            throw new IllegalArgumentException("No document loaded");
+        Assert.isTrue(documentsCount > 0, "No document loaded");
         int pageSize = getPageSize();
-        if (pageSize <=0)
-            throw new IllegalArgumentException("Page size must be positive");
+        Assert.isTrue(pageSize > 0, "Page size must be positive");
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+
+        // Define sorting parameter
+        Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
 
         // Find first page
         List<T> initialList = findAllDocumentsByPageWithClient(0);
         List<T> foundList = new ArrayList<>();
-        repository.findAll(new PageRequest(0, pageSize))
+        repository.findAll(new PageRequest(0, pageSize, sorting))
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
@@ -486,9 +511,44 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         // Find last page
         initialList = findAllDocumentsByPageWithClient(nbPages - 1);
         foundList.clear();
-        repository.findAll(new PageRequest(nbPages - 1, pageSize))
+        repository.findAll(new PageRequest(nbPages - 1, pageSize, sorting))
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
+    }
+
+    /**
+     * Finding a page of existing documents returns an iterable with all these documents.
+     */
+    @Test
+    public void findAllDocumentSorted() {
+
+        // Define sorting parameter
+        Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
+
+        // Find first page
+        List<T> initialList = findAllDocumentsSortedWithClient();
+        List<T> foundList = new ArrayList<>();
+        repository.findAll(sorting)
+                .forEach(foundList::add);
+
+        assertArrayEquals(initialList.toArray(), foundList.toArray());
+    }
+
+    /**
+     * Finding a document with a null identifier throws an ActionRequestValidationException
+     */
+    @Test(expected=ActionRequestValidationException.class)
+    public void findOneNullDocument() {
+
+        repository.findOne(null);
+    }
+
+    /**
+     * Finding a document that doesn't exist returns a null document
+     */
+    @Test
+    public void findOneMissingDocument() {
+        fail("TODO");
     }
 }
