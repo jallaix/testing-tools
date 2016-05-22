@@ -77,7 +77,11 @@ public class TestDocumentsLoader {
     /**
      * Free resources used by Elasticsearch
      */
-    public void terminateElasticIndex() { esSetup.terminate(); }
+    public void terminateElasticIndex() {
+
+        if (esSetup != null)
+            esSetup.terminate();
+    }
 
     /**
      * Get the number of loaded documents

@@ -1,9 +1,9 @@
 package info.jallaix.spring.data.es.test;
 
 import org.elasticsearch.action.ActionRequestValidationException;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +67,8 @@ import static org.junit.Assert.*;
  */
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
 
+    @Rule
+    public TestName name = new TestName();
 
     /**
      * Test documents loader
@@ -87,6 +89,47 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                           Ignored tests system                                                 */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Set of tested methods
+     */
+    private Set<Class<? extends TestedMethod>> testedMethods;
+
+    /**
+     * Constructor with list of methods to test
+     * @param methods Methods to test
+     */
+    @SafeVarargs
+    public SpringDataEsTestCase(Class<? extends TestedMethod>... methods) {
+
+        testedMethods = new HashSet<>(Arrays.asList(methods));
+    }
+
+    /**
+     * Determine if a test is played
+     * @return {@code true} if the test has to be played else {@code false}
+     */
+    private boolean isTestPlayed() {
+
+        try {
+            // Find the test category
+            Category category = this.getClass()
+                    .getMethod(name.getMethodName())
+                    .getAnnotation(Category.class);
+
+            // Find if one of the category classes belongs to the methods to be tested
+            return Arrays.asList(category.value())
+                    .stream()
+                    .anyMatch(testedMethods::contains);
+
+        } catch (NoSuchMethodException e) {
+            return true;
+        }
+    }
+
+    /*----------------------------------------------------------------------------------------------------------------*/
     /*                                           Pre-test data loading                                                */
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -95,6 +138,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      */
     @Before
     public void initElasticIndex() {
+
+        Assume.assumeTrue(isTestPlayed());
 
         documentClass = findDocumentClass();                            // Find document class
         documentMetadata = findDocumentMetadata(documentClass);         // Find document metadata (index, type)
@@ -248,6 +293,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Indexing a null document throws an IllegalArgumentException.
      */
+    @Category(TestedMethod.Index.class)
     @Test(expected=IllegalArgumentException.class)
     public void indexNullDocument() {
 
@@ -257,6 +303,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Saving a null document throws an IllegalArgumentException.
      */
+    @Category(TestedMethod.Save.class)
     @Test(expected=IllegalArgumentException.class)
     public void saveNullDocument() {
 
@@ -266,6 +313,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Indexing a list of documents with one null throws an IllegalArgumentException and no document is indexed.
      */
+    @Category(TestedMethod.SaveBulk.class)
     @Test
     public void saveNullDocuments() {
 
@@ -287,6 +335,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Indexing a new document inserts the document in the index.
      */
+    @Category(TestedMethod.Index.class)
     @Test
     public void indexNewDocument() {
 
@@ -302,6 +351,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Saving a new document inserts the document in the index.
      */
+    @Category(TestedMethod.Save.class)
     @Test
     public void saveNewDocument() {
 
@@ -317,6 +367,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Saving a list of new documents inserts the documents in the index.
      */
+    @Category(TestedMethod.Save.class)
     @Test
     public void saveNewDocuments() {
 
@@ -335,6 +386,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Indexing an existing document replaces the document in the index.
      */
+    @Category(TestedMethod.Index.class)
     @Test
     public void indexExistingDocument() {
 
@@ -350,6 +402,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Saving an existing document replaces the document in the index.
      */
+    @Category(TestedMethod.Save.class)
     @Test
     public void saveExistingDocument() {
 
@@ -365,6 +418,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Saving a list of existing documents replaces the documents in the index.
      */
+    @Category(TestedMethod.SaveBulk.class)
     @Test
     public void saveExistingDocuments() {
 
@@ -388,6 +442,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a list of all existing documents returns an iterable with all these documents.
      */
+    @Category(TestedMethod.FindAll.class)
     @Test
     public void findAllDocuments() {
 
@@ -403,6 +458,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a list of existing documents by identifier returns an iterable with all these documents.
      */
+    @Category(TestedMethod.FindAllById.class)
     @Test
     public void findAllDocumentsByIdentifier() {
 
@@ -421,6 +477,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
      */
+    @Category(TestedMethod.FindAllPageable.class)
     @Test
     public void findAllDocumentsByPage() {
 
@@ -464,6 +521,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a page of existing documents returns an iterable with all these documents.
      */
+    @Category(TestedMethod.FindAllSorted.class)
     @Test
     public void findAllDocumentsSorted() {
 
@@ -485,6 +543,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a document with a null identifier throws an ActionRequestValidationException.
      */
+    @Category(TestedMethod.FindOne.class)
     @Test(expected=ActionRequestValidationException.class)
     public void findOneNullDocument() {
 
@@ -496,6 +555,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a document that doesn't exist returns a null document.
      */
+    @Category(TestedMethod.FindOne.class)
     @Test
     public void findOneMissingDocument() {
 
@@ -508,6 +568,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Finding a document that exists returns this document.
      */
+    @Category(TestedMethod.FindOne.class)
     @Test
     public void findOneExistingDocument() {
 
@@ -524,6 +585,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Testing the existence of a document with a null identifier throws an ActionRequestValidationException.
      */
+    @Category(TestedMethod.Exist.class)
     @Test(expected=ActionRequestValidationException.class)
     public void existOneNullDocument() {
 
@@ -535,6 +597,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Testing the existence of a document that doesn't exist returns false.
      */
+    @Category(TestedMethod.Exist.class)
     @Test
     public void existOneMissingDocument() {
 
@@ -547,6 +610,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Testing the existence of a document that exists returns true.
      */
+    @Category(TestedMethod.Exist.class)
     @Test
     public void existOneExistingDocument() {
 
@@ -559,6 +623,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Counting the number of documents returns the number of documents in the index type
      */
+    @Category(TestedMethod.Count.class)
     @Test
     public void countDocuments() {
 
@@ -573,6 +638,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting all documents leaves an empty index type.
      */
+    @Category(TestedMethod.DeleteAll.class)
     @Test
     public void deleteAllDocuments() {
 
@@ -585,6 +651,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      * Deleting a missing document set doesn't remove these documents from the index type.
      */
     @Test
+    @Category(TestedMethod.DeleteAllById.class)
     public void deletingMissingDocumentSet() {
 
         repository.delete(Collections.singletonList(newDocumentToInsert()));
@@ -597,6 +664,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting an existing document set removes these documents from the index type.
      */
+    @Category(TestedMethod.DeleteAllById.class)
     @Test
     public void deleteExistingDocumentSet() {
 
@@ -610,6 +678,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting a missing document set doesn't remove this document from the index type.
      */
+    @Category(TestedMethod.Delete.class)
     @Test
     public void deleteOneMissingDocument() {
 
@@ -623,6 +692,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting an existing document set removes this document from the index type.
      */
+    @Category(TestedMethod.Delete.class)
     @Test
     public void deleteOneExistingDocument() {
 
@@ -636,6 +706,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting a missing document by identifier set doesn't remove this document from the index type.
      */
+    @Category(TestedMethod.DeleteById.class)
     @Test
     public void deleteOneMissingDocumentById() {
 
@@ -649,6 +720,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     /**
      * Deleting an existing document by identifier set removes this document from the index type.
      */
+    @Category(TestedMethod.DeleteById.class)
     @Test
     public void deleteOneExistingDocumentById() {
 
