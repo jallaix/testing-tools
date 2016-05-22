@@ -13,8 +13,8 @@ import static com.github.tlrx.elasticsearch.test.EsSetup.deleteAll;
 import static com.github.tlrx.elasticsearch.test.EsSetup.fromClassPath;
 
 /**
- * This class is used to load documents in an Elastisearch index.
- * Then unit tests may perform index operations against these data.
+ * This class is used to load documents in an Elasticsearch index.
+ * Unit tests may perform index operations against these data.
  */
 public class TestDocumentsLoader {
 

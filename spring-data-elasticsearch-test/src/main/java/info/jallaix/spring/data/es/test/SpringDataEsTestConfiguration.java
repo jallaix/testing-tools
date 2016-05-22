@@ -46,4 +46,14 @@ public class SpringDataEsTestConfiguration {
 
         return new TestDocumentsLoader(elasticsearchClient());
     }
+
+    /**
+     * Define the bean used to perform low level Elasticsearch operations
+     * @return The test client operations
+     */
+    @Bean
+    public TestClientOperations testClientOperations() {
+
+        return new TestClientOperations(elasticsearchClient());
+    }
 }

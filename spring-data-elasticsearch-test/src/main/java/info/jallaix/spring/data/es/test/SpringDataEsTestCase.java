@@ -1,10 +1,6 @@
 package info.jallaix.spring.data.es.test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.sort.SortOrder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,7 +14,6 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.util.Assert;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -80,11 +75,10 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     private TestDocumentsLoader testDocumentsLoader;
 
     /**
-     * Elasticsearch client
+     * Test client operations
      */
-    @SuppressWarnings("SpringJavaAutowiringInspection")
     @Autowired
-    private Client esClient;
+    private TestClientOperations testClientOperations;
 
     /**
      * Logger
@@ -138,6 +132,16 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     private Field documentIdField;
 
     /**
+     * Find Elastic metadata (index, type, ...) of the tested document
+     * @return The document metadata
+     */
+    private Document findDocumentMetadata(Class<T> documentClass) {
+
+        // Get annotation from document class
+        return documentClass.getDeclaredAnnotation(Document.class);
+    }
+
+    /**
      * Find the class of the tested document
      * @return The document class
      */
@@ -150,16 +154,6 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         Class<T> documentClass = (Class<T>) types[0];
 
         return documentClass;
-    }
-
-    /**
-     * Find Elastic metadata (index, type, ...) of the tested document
-     * @return The document metadata
-     */
-    private Document findDocumentMetadata(Class<T> documentClass) {
-
-        // Get annotation from document class
-        return documentClass.getDeclaredAnnotation(Document.class);
     }
 
     /**
@@ -178,6 +172,30 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         }
 
         return null;
+    }
+
+    /**
+     * Get the Elastic document metadata
+     * @return The Elastic document metadata
+     */
+    @SuppressWarnings("unused")
+    protected Document getDocumentMetadata() { return documentMetadata; }
+
+    /**
+     * Get the identifier value of a document
+     * @param document The document
+     * @return The found identifier value
+     */
+    protected ID getIdFieldValue(T document) {
+
+        try {
+            @SuppressWarnings("unchecked")
+            ID id = (ID)documentIdField.get(document);
+            return id;
+        } catch (IllegalAccessException e) {
+            logger.error(null, e);
+            return null;
+        }
     }
 
 
@@ -201,103 +219,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                             Sub-classes methods                                                */
+    /*                                               Abstract methods                                                 */
     /*----------------------------------------------------------------------------------------------------------------*/
-
-    /**
-     * Get the Elastic document metadata
-     * @return The Elastic document metadata
-     */
-    @SuppressWarnings("unused")
-    protected Document getDocumentMetadata() { return documentMetadata; }
-
-    /**
-     * Count the number of typed documents in the index.
-     * @return The number of typed documents found
-     */
-    protected long countDocumentsWithClient() {
-
-        return esClient.prepareCount(documentMetadata.indexName())
-                .setTypes(documentMetadata.type())
-                .get()
-                .getCount();
-    }
-
-    /**
-     * Find all typed documents in the index.
-     * @return The typed documents found
-     */
-    protected List<T> findAllDocumentsWithClient() {
-
-        List<T> documents = new ArrayList<>();
-
-        esClient.prepareSearch(documentMetadata.indexName())
-                .setTypes(documentMetadata.type())
-                .execute()
-                .actionGet()
-                .getHits()
-                .forEach(hit -> documents.add(fromJson(hit)));
-
-        return documents;
-    }
-
-    /**
-     * Find all typed document belonging to a page with sorting
-     * @param pageNo The page number to get
-     * @return The typed documents found
-     */
-    protected List<T> findAllDocumentsByPageWithClient(int pageNo) {
-
-        List<T> documents = new ArrayList<>();
-
-        esClient.prepareSearch(documentMetadata.indexName())
-                .setTypes(documentMetadata.type())
-                .setFrom(pageNo * getPageSize())
-                .setSize(getPageSize())
-                .addSort(documentIdField.getName(), SortOrder.DESC)
-                .execute()
-                .actionGet()
-                .getHits()
-                .forEach(hit -> documents.add(fromJson(hit)));
-
-        return documents;
-    }
-
-    /**
-     * Find all typed document with sorting
-     * @return The typed documents found
-     */
-    protected List<T> findAllDocumentsSortedWithClient() {
-
-        List<T> documents = new ArrayList<>();
-
-        esClient.prepareSearch(documentMetadata.indexName())
-                .setTypes(documentMetadata.type())
-                .addSort(documentIdField.getName(), SortOrder.DESC)
-                .execute()
-                .actionGet()
-                .getHits()
-                .forEach(hit -> documents.add(fromJson(hit)));
-
-        return documents;
-    }
-
-    /**
-     * Get the identifier value of a document
-     * @param document The document
-     * @return The found identifier value
-     */
-    protected ID getIdFieldValue(T document) {
-
-        try {
-            @SuppressWarnings("unchecked")
-            ID id = (ID)documentIdField.get(document);
-            return id;
-        } catch (IllegalAccessException e) {
-            logger.error(null, e);
-            return null;
-        }
-    }
 
     /**
      * Return a new document for insertion.
@@ -317,20 +240,6 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      */
     protected abstract int getPageSize();
 
-    /**
-     * Convert an Elasticsearch hit to an entity
-     * @param hit The search hit
-     * @return The entity
-     */
-    private T fromJson(SearchHit hit) {
-
-        try {
-            return new ObjectMapper().readValue(hit.getSourceAsString(), documentClass);
-        } catch (IOException e) {
-            logger.error(null, e);
-            return null;
-        }
-    }
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                    Tests related to document indexing                                          */
@@ -369,7 +278,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
             fail("IllegalArgumentException must be thrown");
         }
         catch (IllegalArgumentException e) {
-            assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+            assertEquals(
+                    testDocumentsLoader.getLoadedDocumentCount(),
+                    testClientOperations.countDocuments(documentMetadata));
         }
     }
 
@@ -382,7 +293,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         T toInsert = newDocumentToInsert();
         T inserted = repository.index(toInsert);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() + 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() + 1,
+                testClientOperations.countDocuments(documentMetadata));
         assertEquals(toInsert, inserted);
     }
 
@@ -395,7 +308,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         T toInsert = newDocumentToInsert();
         T inserted = repository.save(toInsert);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() + 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() + 1,
+                testClientOperations.countDocuments(documentMetadata));
         assertEquals(toInsert, inserted);
     }
 
@@ -411,7 +326,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         repository.save(toInsert)
                 .forEach(inserted::add);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() + 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() + 1,
+                testClientOperations.countDocuments(documentMetadata));
         assertArrayEquals(toInsert.toArray(), inserted.toArray());
     }
 
@@ -424,7 +341,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         T toUpdate = newDocumentToUpdate();
         T updated = repository.index(toUpdate);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
         assertEquals(toUpdate, updated);
     }
 
@@ -437,7 +356,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         T toUpdate = newDocumentToUpdate();
         T updated = repository.save(toUpdate);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
         assertEquals(toUpdate, updated);
     }
 
@@ -453,7 +374,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         repository.save(toUpdate)
                 .forEach(updated::add);
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
         assertArrayEquals(toUpdate.toArray(), updated.toArray());
     }
 
@@ -468,7 +391,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     @Test
     public void findAllDocuments() {
 
-        List<T> initialList = findAllDocumentsWithClient();
+        List<T> initialList = testClientOperations.findAllDocuments(documentMetadata, documentClass);
 
         List<T> foundList = new ArrayList<>();
         repository.findAll()
@@ -483,7 +406,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     @Test
     public void findAllDocumentsByIdentifier() {
 
-        List<T> initialList = findAllDocumentsWithClient();
+        List<T> initialList = testClientOperations.findAllDocuments(documentMetadata, documentClass);
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
@@ -502,7 +425,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     public void findAllDocumentsByPage() {
 
         // Define the page parameters
-        long documentsCount = countDocumentsWithClient();
+        long documentsCount = testClientOperations.countDocuments(documentMetadata);
         Assert.isTrue(documentsCount > 0, "No document loaded");
         int pageSize = getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
@@ -512,7 +435,12 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
 
         // Find first page
-        List<T> initialList = findAllDocumentsByPageWithClient(0);
+        List<T> initialList = testClientOperations.findAllDocumentsByPage(
+                documentMetadata,
+                documentClass,
+                documentIdField,
+                0,
+                pageSize);
         List<T> foundList = new ArrayList<>();
         repository.findAll(new PageRequest(0, pageSize, sorting))
                 .forEach(foundList::add);
@@ -520,7 +448,12 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Find last page
-        initialList = findAllDocumentsByPageWithClient(nbPages - 1);
+        initialList = testClientOperations.findAllDocumentsByPage(
+                documentMetadata,
+                documentClass,
+                documentIdField,
+                nbPages - 1,
+                pageSize);
         foundList.clear();
         repository.findAll(new PageRequest(nbPages - 1, pageSize, sorting))
                 .forEach(foundList::add);
@@ -538,7 +471,10 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
         Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
 
         // Find first page
-        List<T> initialList = findAllDocumentsSortedWithClient();
+        List<T> initialList = testClientOperations.findAllDocumentsSorted(
+                documentMetadata,
+                documentClass,
+                documentIdField);
         List<T> foundList = new ArrayList<>();
         repository.findAll(sorting)
                 .forEach(foundList::add);
@@ -642,7 +578,7 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.deleteAll();
 
-        assertEquals(0, countDocumentsWithClient());
+        assertEquals(0, testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -653,7 +589,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(Collections.singletonList(newDocumentToInsert()));
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -664,7 +602,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(Collections.singletonList(newDocumentToUpdate()));
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() - 1,
+                testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -675,7 +615,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(newDocumentToInsert());
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -686,7 +628,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(newDocumentToUpdate());
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() - 1,
+                testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -697,7 +641,9 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(getIdFieldValue(newDocumentToInsert()));
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount(), countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount(),
+                testClientOperations.countDocuments(documentMetadata));
     }
 
     /**
@@ -708,6 +654,8 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
 
         repository.delete(getIdFieldValue(newDocumentToUpdate()));
 
-        assertEquals(testDocumentsLoader.getLoadedDocumentCount() - 1, countDocumentsWithClient());
+        assertEquals(
+                testDocumentsLoader.getLoadedDocumentCount() - 1,
+                testClientOperations.countDocuments(documentMetadata));
     }
 }
