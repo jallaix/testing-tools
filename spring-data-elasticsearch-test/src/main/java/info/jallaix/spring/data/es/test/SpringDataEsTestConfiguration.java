@@ -1,12 +1,12 @@
 package info.jallaix.spring.data.es.test;
 
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.NodeBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
-import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
 /**
  * Spring configuration for Elasticsearch repository tests
@@ -22,6 +22,7 @@ public class SpringDataEsTestConfiguration {
     public Client elasticsearchClient() {
 
         NodeBuilder nodeBuilder = NodeBuilder.nodeBuilder();
+        nodeBuilder.settings().put("path.data", "target/test-data");
         nodeBuilder.local(true);
 
         return nodeBuilder.node().client();
