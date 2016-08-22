@@ -20,10 +20,12 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.*;
 
 /**
- * Test class for the Spring Data Elasticsearch module.<br/>
- * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br/>
- * It also performs generic CRUD tests on the tested repository.<br/><br/>
+ * <p>
+ * Test class for the Spring Data Elasticsearch module.<br>
+ * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br>
+ * It also performs generic CRUD tests on the tested repository.<br>
  *
+ * <p>
  * The repository must verify the following tests related to document <b>indexing</b> or <b>saving</b> (same behavior) :
  * <ul>
  *     <li>Indexing a null document throws an IllegalArgumentException.</li>
@@ -36,6 +38,7 @@ import static org.junit.Assert.*;
  *     <li>Saving an existing document replaces the document in the index.</li>
  *     <li>Saving a list of existing documents replaces the documents in the index.</li>
  * </ul>
+ * <p>
  * The repository must verify the following tests related to document <b>finding</b> :
  * <ul>
  *     <li>Finding a list of all existing documents returns an iterable with all these documents.</li>
@@ -50,6 +53,7 @@ import static org.junit.Assert.*;
  *     <li>Testing the existence of a document that exists returns true.</li>
  *     <li>Counting the number of documents returns the number of documents in the index type</li>
  * </ul>
+ * <p>
  * The repository must verify the following tests related to document <b>deleting</b> :
  * <ul>
  *     <li>Deleting all documents leaves an empty index type.</li>

@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * <p>
  * This class is used to performed low level operations on an Elasticsearch index.
  * Unit tests may perform index operations without using Spring Data.
  */
@@ -55,6 +56,7 @@ public class TestClientOperations {
 
     /**
      * Find all typed documents in the index.
+     * @param <T> A typed document type
      * @param documentMetadata The Elastic document metadata
      * @param documentClass The document class
      * @return The typed documents found
@@ -75,6 +77,7 @@ public class TestClientOperations {
 
     /**
      * Find all typed document belonging to a page with sorting
+     * @param <T> A typed document type
      * @param documentMetadata The Elastic document metadata
      * @param documentClass The document class
      * @param documentIdField The document identifier
@@ -101,6 +104,7 @@ public class TestClientOperations {
 
     /**
      * Find all typed document with sorting
+     * @param <T> A typed document type
      * @param documentMetadata The Elastic document metadata
      * @param documentClass The document class
      * @param documentIdField The document identifier
@@ -123,6 +127,7 @@ public class TestClientOperations {
 
     /**
      * Convert an Elasticsearch hit to an entity
+     * @param <T> A typed document type
      * @param hit The search hit
      * @param documentClass The document class
      * @return The entity
