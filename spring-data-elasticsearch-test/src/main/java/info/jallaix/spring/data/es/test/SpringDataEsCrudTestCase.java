@@ -14,6 +14,7 @@ import org.springframework.data.elasticsearch.repository.ElasticsearchRepository
 import org.springframework.util.Assert;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -327,6 +328,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
         int pageSize = getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+        Field sortField = getSortField();
 
         // Define sorting parameter
         Sort sorting = new Sort(Sort.Direction.DESC, documentIdField.getName());
@@ -336,6 +338,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
                 documentMetadata,
                 documentClass,
                 documentIdField,
+                sortField,
                 0,
                 pageSize);
         List<T> foundList = new ArrayList<>();
@@ -349,6 +352,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
                 documentMetadata,
                 documentClass,
                 documentIdField,
+                sortField,
                 nbPages - 1,
                 pageSize);
         foundList.clear();
@@ -372,7 +376,8 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
         List<T> initialList = testClientOperations.findAllDocumentsSorted(
                 documentMetadata,
                 documentClass,
-                documentIdField);
+                documentIdField,
+                getSortField());
         List<T> foundList = new ArrayList<>();
         repository.findAll(sorting)
                 .forEach(foundList::add);

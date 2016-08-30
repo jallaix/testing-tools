@@ -222,6 +222,12 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
     protected abstract T newDocumentToUpdate();
 
     /**
+     * Return the sort field
+     * @return The sort field
+     */
+    protected abstract Field getSortField();
+
+    /**
      * Return the size of a page to get
      * @return The size of a page to get
      */

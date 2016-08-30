@@ -80,12 +80,13 @@ public class TestClientOperations {
      * @param <T> A typed document type
      * @param documentMetadata The Elastic document metadata
      * @param documentClass The document class
-     * @param documentIdField The document identifier
+     * @param documentIdField The document identifier field
+     * @param documentSortField The document sort field
      * @param pageNo The page number to get
      * @param pageSize The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsByPage(Document documentMetadata, Class<T> documentClass, Field documentIdField, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsByPage(Document documentMetadata, Class<T> documentClass, Field documentIdField, Field documentSortField, int pageNo, int pageSize) {
 
         List<T> documents = new ArrayList<>();
 
@@ -93,7 +94,7 @@ public class TestClientOperations {
                 .setTypes(documentMetadata.type())
                 .setFrom(pageNo * pageSize)
                 .setSize(pageSize)
-                .addSort(documentIdField.getName(), SortOrder.DESC)
+                .addSort(documentSortField.getName(), SortOrder.DESC)
                 .execute()
                 .actionGet()
                 .getHits()
@@ -108,15 +109,16 @@ public class TestClientOperations {
      * @param documentMetadata The Elastic document metadata
      * @param documentClass The document class
      * @param documentIdField The document identifier
+     * @param documentSortField The document sort field
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentIdField) {
+    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentIdField, Field documentSortField) {
 
         List<T> documents = new ArrayList<>();
 
         esClient.prepareSearch(documentMetadata.indexName())
                 .setTypes(documentMetadata.type())
-                .addSort(documentIdField.getName(), SortOrder.DESC)
+                .addSort(documentSortField.getName(), SortOrder.DESC)
                 .execute()
                 .actionGet()
                 .getHits()
