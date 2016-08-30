@@ -2,6 +2,9 @@ package info.jallaix.spring.data.es.test;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.experimental.categories.Category;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,8 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.Set;
 
 /**
  * <p>
@@ -20,6 +25,9 @@ import java.lang.reflect.Type;
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.
  */
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
+
+    @Rule
+    public TestName name = new TestName();
 
     /**
      * Test documents loader
@@ -63,6 +71,32 @@ public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends
      * @return The test documents loader
      */
     protected TestDocumentsLoader getTestDocumentsLoader() { return testDocumentsLoader; }
+
+    /**
+     * Determine if a test is played
+     *
+     * @return {@code true} if the test has to be played else {@code false}
+     */
+    protected boolean isTestPlayed(Set<Class<?>> testedMethods) {
+
+        try {
+            // Find the test category
+            Category category = this.getClass()
+                    .getMethod(name.getMethodName())
+                    .getAnnotation(Category.class);
+
+            if (category == null)
+                return true;
+
+            // Find if one of the category classes belongs to the methods to be tested
+            return Arrays.asList(category.value())
+                    .stream()
+                    .anyMatch(testedMethods::contains);
+
+        } catch (NoSuchMethodException e) {
+            return true;
+        }
+    }
 
 
     /*----------------------------------------------------------------------------------------------------------------*/

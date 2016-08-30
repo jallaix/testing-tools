@@ -83,13 +83,6 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     private TestClientOperations testClientOperations;
 
 
-    @Before
-    public void selectTests() {
-
-        Assume.assumeTrue(isTestPlayed());
-    }
-
-
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                           Ignored tests system                                                 */
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -97,41 +90,39 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Set of tested methods
      */
-    private Set<Class<? extends TestedMethod>> testedMethods;
+    private Set<Class<?>> testedMethods;
+
+    @Before
+    public void selectTests() {
+        Assume.assumeTrue(isTestPlayed(testedMethods));
+    }
 
     /**
      * Constructor with list of methods to test
      * @param methods Methods to test
      */
     @SafeVarargs
-    public SpringDataEsCrudTestCase(Class<? extends TestedMethod>... methods) {
+    public SpringDataEsCrudTestCase(Class<? extends DaoTestedMethod>... methods) {
 
-        testedMethods = new HashSet<>(Arrays.asList(methods));
-    }
-
-    /**
-     * Determine if a test is played
-     * @return {@code true} if the test has to be played else {@code false}
-     */
-    private boolean isTestPlayed() {
-
-        try {
-            // Find the test category
-            Category category = this.getClass()
-                    .getMethod(name.getMethodName())
-                    .getAnnotation(Category.class);
-
-            if (category == null)
-                return true;
-
-            // Find if one of the category classes belongs to the methods to be tested
-            return Arrays.asList(category.value())
-                    .stream()
-                    .anyMatch(testedMethods::contains);
-
-        } catch (NoSuchMethodException e) {
-            return true;
-        }
+        if (methods.length == 0)
+            testedMethods = new HashSet<>(Arrays.asList(
+                    DaoTestedMethod.Index.class,
+                            DaoTestedMethod.Index.class,
+                            DaoTestedMethod.Save.class,
+                            DaoTestedMethod.SaveBulk.class,
+                            DaoTestedMethod.FindAll.class,
+                            DaoTestedMethod.FindAllById.class,
+                            DaoTestedMethod.FindAllPageable.class,
+                            DaoTestedMethod.FindAllSorted.class,
+                            DaoTestedMethod.FindOne.class,
+                            DaoTestedMethod.Exist.class,
+                            DaoTestedMethod.Count.class,
+                            DaoTestedMethod.DeleteAll.class,
+                            DaoTestedMethod.DeleteAllById.class,
+                            DaoTestedMethod.Delete.class,
+                            DaoTestedMethod.DeleteById.class));
+        else
+            testedMethods = new HashSet<>(Arrays.asList(methods));
     }
 
 
@@ -142,7 +133,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Indexing a null document throws an IllegalArgumentException.
      */
-    @Category(TestedMethod.Index.class)
+    @Category(DaoTestedMethod.Index.class)
     @Test(expected=IllegalArgumentException.class)
     public void indexNullDocument() {
 
@@ -152,7 +143,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Saving a null document throws an IllegalArgumentException.
      */
-    @Category(TestedMethod.Save.class)
+    @Category(DaoTestedMethod.Save.class)
     @Test(expected=IllegalArgumentException.class)
     public void saveNullDocument() {
 
@@ -162,7 +153,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Indexing a list of documents with one null throws an IllegalArgumentException and no document is indexed.
      */
-    @Category(TestedMethod.SaveBulk.class)
+    @Category(DaoTestedMethod.SaveBulk.class)
     @Test
     public void saveNullDocuments() {
 
@@ -184,7 +175,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Indexing a new document inserts the document in the index.
      */
-    @Category(TestedMethod.Index.class)
+    @Category(DaoTestedMethod.Index.class)
     @Test
     public void indexNewDocument() {
 
@@ -200,7 +191,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Saving a new document inserts the document in the index.
      */
-    @Category(TestedMethod.Save.class)
+    @Category(DaoTestedMethod.Save.class)
     @Test
     public void saveNewDocument() {
 
@@ -216,7 +207,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Saving a list of new documents inserts the documents in the index.
      */
-    @Category(TestedMethod.Save.class)
+    @Category(DaoTestedMethod.Save.class)
     @Test
     public void saveNewDocuments() {
 
@@ -235,7 +226,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Indexing an existing document replaces the document in the index.
      */
-    @Category(TestedMethod.Index.class)
+    @Category(DaoTestedMethod.Index.class)
     @Test
     public void indexExistingDocument() {
 
@@ -251,7 +242,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Saving an existing document replaces the document in the index.
      */
-    @Category(TestedMethod.Save.class)
+    @Category(DaoTestedMethod.Save.class)
     @Test
     public void saveExistingDocument() {
 
@@ -267,7 +258,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Saving a list of existing documents replaces the documents in the index.
      */
-    @Category(TestedMethod.SaveBulk.class)
+    @Category(DaoTestedMethod.SaveBulk.class)
     @Test
     public void saveExistingDocuments() {
 
@@ -291,7 +282,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a list of all existing documents returns an iterable with all these documents.
      */
-    @Category(TestedMethod.FindAll.class)
+    @Category(DaoTestedMethod.FindAll.class)
     @Test
     public void findAllDocuments() {
 
@@ -307,7 +298,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a list of existing documents by identifier returns an iterable with all these documents.
      */
-    @Category(TestedMethod.FindAllById.class)
+    @Category(DaoTestedMethod.FindAllById.class)
     @Test
     public void findAllDocumentsByIdentifier() {
 
@@ -326,7 +317,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
      */
-    @Category(TestedMethod.FindAllPageable.class)
+    @Category(DaoTestedMethod.FindAllPageable.class)
     @Test
     public void findAllDocumentsByPage() {
 
@@ -370,7 +361,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a page of existing documents returns an iterable with all these documents.
      */
-    @Category(TestedMethod.FindAllSorted.class)
+    @Category(DaoTestedMethod.FindAllSorted.class)
     @Test
     public void findAllDocumentsSorted() {
 
@@ -392,7 +383,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a document with a null identifier throws an ActionRequestValidationException.
      */
-    @Category(TestedMethod.FindOne.class)
+    @Category(DaoTestedMethod.FindOne.class)
     @Test(expected=ActionRequestValidationException.class)
     public void findOneNullDocument() {
 
@@ -404,7 +395,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a document that doesn't exist returns a null document.
      */
-    @Category(TestedMethod.FindOne.class)
+    @Category(DaoTestedMethod.FindOne.class)
     @Test
     public void findOneMissingDocument() {
 
@@ -417,7 +408,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Finding a document that exists returns this document.
      */
-    @Category(TestedMethod.FindOne.class)
+    @Category(DaoTestedMethod.FindOne.class)
     @Test
     public void findOneExistingDocument() {
 
@@ -434,7 +425,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Testing the existence of a document with a null identifier throws an ActionRequestValidationException.
      */
-    @Category(TestedMethod.Exist.class)
+    @Category(DaoTestedMethod.Exist.class)
     @Test(expected=ActionRequestValidationException.class)
     public void existOneNullDocument() {
 
@@ -446,7 +437,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Testing the existence of a document that doesn't exist returns false.
      */
-    @Category(TestedMethod.Exist.class)
+    @Category(DaoTestedMethod.Exist.class)
     @Test
     public void existOneMissingDocument() {
 
@@ -459,7 +450,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Testing the existence of a document that exists returns true.
      */
-    @Category(TestedMethod.Exist.class)
+    @Category(DaoTestedMethod.Exist.class)
     @Test
     public void existOneExistingDocument() {
 
@@ -472,7 +463,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Counting the number of documents returns the number of documents in the index type
      */
-    @Category(TestedMethod.Count.class)
+    @Category(DaoTestedMethod.Count.class)
     @Test
     public void countDocuments() {
 
@@ -487,7 +478,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting all documents leaves an empty index type.
      */
-    @Category(TestedMethod.DeleteAll.class)
+    @Category(DaoTestedMethod.DeleteAll.class)
     @Test
     public void deleteAllDocuments() {
 
@@ -500,7 +491,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
      * Deleting a missing document set doesn't remove these documents from the index type.
      */
     @Test
-    @Category(TestedMethod.DeleteAllById.class)
+    @Category(DaoTestedMethod.DeleteAllById.class)
     public void deletingMissingDocumentSet() {
 
         repository.delete(Collections.singletonList(newDocumentToInsert()));
@@ -513,7 +504,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting an existing document set removes these documents from the index type.
      */
-    @Category(TestedMethod.DeleteAllById.class)
+    @Category(DaoTestedMethod.DeleteAllById.class)
     @Test
     public void deleteExistingDocumentSet() {
 
@@ -527,7 +518,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting a missing document set doesn't remove this document from the index type.
      */
-    @Category(TestedMethod.Delete.class)
+    @Category(DaoTestedMethod.Delete.class)
     @Test
     public void deleteOneMissingDocument() {
 
@@ -541,7 +532,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting an existing document set removes this document from the index type.
      */
-    @Category(TestedMethod.Delete.class)
+    @Category(DaoTestedMethod.Delete.class)
     @Test
     public void deleteOneExistingDocument() {
 
@@ -555,7 +546,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting a missing document by identifier set doesn't remove this document from the index type.
      */
-    @Category(TestedMethod.DeleteById.class)
+    @Category(DaoTestedMethod.DeleteById.class)
     @Test
     public void deleteOneMissingDocumentById() {
 
@@ -569,7 +560,7 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
     /**
      * Deleting an existing document by identifier set removes this document from the index type.
      */
-    @Category(TestedMethod.DeleteById.class)
+    @Category(DaoTestedMethod.DeleteById.class)
     @Test
     public void deleteOneExistingDocumentById() {
 
