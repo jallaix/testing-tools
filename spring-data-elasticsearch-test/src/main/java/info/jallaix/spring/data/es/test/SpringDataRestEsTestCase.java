@@ -10,7 +10,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
-import org.springframework.hateoas.ResourceSupport;
 import org.springframework.hateoas.hal.Jackson2HalModule;
 import org.springframework.hateoas.mvc.TypeReferences;
 import org.springframework.http.*;
@@ -34,7 +33,7 @@ import static org.junit.Assert.fail;
 /**
  * Created by JAX on 30/08/2016.
  */
-public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>, TR extends ResourceSupport> extends SpringDataEsTestCase<T, ID, R> {
+public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends SpringDataEsTestCase<T, ID, R> {
 
     @Value("${local.server.port}")
     private int serverPort;
@@ -96,7 +95,7 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
                     getWebServiceUrl(),
                     HttpMethod.POST,
                     httpEntityNull,
-                    new TypeReferences.ResourceType<TR>() {});
+                    new TypeReferences.ResourceType<T>() {});
             fail("Should return a 400 BAD REQUEST response");
         }
         catch (HttpStatusCodeException e) {

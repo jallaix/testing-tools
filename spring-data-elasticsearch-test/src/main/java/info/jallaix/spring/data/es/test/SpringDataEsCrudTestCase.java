@@ -337,7 +337,6 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
         List<T> initialList = testClientOperations.findAllDocumentsByPage(
                 documentMetadata,
                 documentClass,
-                documentIdField,
                 sortField,
                 0,
                 pageSize);
@@ -351,7 +350,6 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
         initialList = testClientOperations.findAllDocumentsByPage(
                 documentMetadata,
                 documentClass,
-                documentIdField,
                 sortField,
                 nbPages - 1,
                 pageSize);
@@ -376,7 +374,6 @@ public abstract class SpringDataEsCrudTestCase<T, ID extends Serializable, R ext
         List<T> initialList = testClientOperations.findAllDocumentsSorted(
                 documentMetadata,
                 documentClass,
-                documentIdField,
                 getSortField());
         List<T> foundList = new ArrayList<>();
         repository.findAll(sorting)
