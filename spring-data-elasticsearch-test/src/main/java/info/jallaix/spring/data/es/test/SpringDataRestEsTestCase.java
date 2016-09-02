@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -12,6 +11,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.PagedResources;
@@ -71,7 +71,7 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
 
     @Before
     public void selectTests() {
-        Assume.assumeTrue(isTestPlayed(testedMethods));
+        //Assume.assumeTrue(isTestPlayed(testedMethods));
     }
 
     /**
@@ -101,6 +101,23 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
     }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                             Abstract methods                                                   */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Get the resource type for JSON/Object mapping
+     * @return The resource type
+     */
+    protected abstract TypeReferences.ResourceType<T> getResourceType();
+
+    /**
+     * Get the paged resources type for JSON/Object mapping
+     * @return The paged resources type
+     */
+    protected abstract TypeReferences.PagedResourcesType<Resource<T>> getPagedResourcesType();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -155,7 +172,7 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
                             getWebServiceUrl(),
                             HttpMethod.POST,
                             httpEntity,
-                            new TypeReferences.ResourceType<T>() {});
+                            getResourceType());
 
 
             if (expectedError)  // No exception thrown whereas one is expected
@@ -195,7 +212,7 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
                             linkId.getHref(),
                             HttpMethod.GET,
                             null,
-                            new TypeReferences.ResourceType<T>() {});
+                            getResourceType());
 
             if (expectedError)  // No exception thrown whereas one is expected
                 fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
@@ -254,8 +271,7 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
                         getWebServiceUrl() + urlParams,
                         HttpMethod.GET,
                         null,
-                        new TypeReferences.PagedResourcesType<Resource<T>>() {
-                        });
+                        getPagedResourcesType());
 
         // Verify the expected HTTP status code and body content
         assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
@@ -274,11 +290,23 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
      * @param entity Entity data to update
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError {@code true} if an error is expected
-     * @param expectedErrors Expected validation errors to assert
      * @return The updated entity resource
      */
     @SuppressWarnings("unused")
-    protected ResponseEntity<Resource<T>> updateLanguage(String id, T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+    protected ResponseEntity<Resource<T>> putEntity(String id, T entity, HttpStatus expectedStatus, boolean expectedError) {
+        return putEntity(id, entity, expectedStatus, expectedError, null);
+    }
+
+    /**
+     * Call the REST web service to update
+     * @param id Identifier of the entity resource to update
+     * @param entity Entity data to update
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError {@code true} if an error is expected
+     * @param expectedErrors Expected validation errors to assert
+     * @return The updated entity resource
+     */
+    protected ResponseEntity<Resource<T>> putEntity(String id, T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
 
         // Define headers and body
         HttpHeaders httpHeaders = new HttpHeaders();
@@ -286,13 +314,13 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
         HttpEntity<T> httpEntity = new HttpEntity<>(entity, httpHeaders);
 
         try {
-            // Send a POST request
+            // Send a PUT request
             ResponseEntity<Resource<T>> responseEntity =
                     getHalRestTemplate().exchange(
-                            getWebServiceUrl() + "/" + id,
+                            getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.PUT,
                             httpEntity,
-                            new TypeReferences.ResourceType<T>() {});
+                            getResourceType());
 
             if (expectedError)  // No exception thrown whereas one is expected
                 fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
@@ -320,18 +348,28 @@ public abstract class SpringDataRestEsTestCase<T, ID extends Serializable, R ext
      * @param entity The language to convert
      * @return The resource containing a language
      */
-    protected Resource<T> convertToResource(T entity) {
+    protected Resource<T> convertToResource(final T entity) {
 
+        // Get the identifier value
         String id = "undefined";
         try {
             id = documentIdField.get(entity).toString();
         } catch (IllegalAccessException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
+        // Convert entity into resource
         Resource<T> result = new Resource<>(entity);
         result.add(new Link(getWebServiceUrl().toString() + "/" + id));
         result.add(new Link(getWebServiceUrl().toString() + "/" + id, documentClass.getSimpleName().toLowerCase()));
+
+        // Set the resource identifier to "null" : the identifier isn't sent in the entity response
+        documentIdField.setAccessible(true);
+        try {
+            documentIdField.set(result.getContent(), null);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
 
         return result;
     }
