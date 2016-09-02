@@ -21,11 +21,15 @@ import java.util.Set;
 
 /**
  * <p>
- * Test class for the Spring Data Elasticsearch module.<br>
+ * Test class for the Spring Data Elasticsearch module.
+ * <p>
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.
  */
 public abstract class SpringDataEsTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
 
+    /**
+     * Ability to get the current test name
+     */
     @Rule
     public TestName name = new TestName();
 
