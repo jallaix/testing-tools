@@ -6,11 +6,13 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -134,11 +136,24 @@ public class TestClientOperations {
      */
     private <T> T fromJson(SearchHit hit, Class<T> documentClass) {
 
+        T entity;
         try {
-            return new ObjectMapper().readValue(hit.getSourceAsString(), documentClass);
+            entity = new ObjectMapper().readValue(hit.getSourceAsString(), documentClass);
         } catch (IOException e) {
             logger.error(null, e);
             return null;
         }
+
+        Field idField = Arrays.asList(documentClass.getDeclaredFields()).stream()
+                .filter(f -> f.isAnnotationPresent(Id.class))
+                .findFirst().orElseThrow(() -> new RuntimeException("Missing @Id annotation in document class " + documentClass.getName()));
+        try {
+            idField.setAccessible(true);
+            idField.set(entity, hit.getId());
+        } catch (IllegalAccessException e) {
+            new RuntimeException("Impossible to affect value '" + hit.getId() + "' to " + documentClass.getName() + "." + idField.getName());
+        }
+
+        return entity;
     }
 }
