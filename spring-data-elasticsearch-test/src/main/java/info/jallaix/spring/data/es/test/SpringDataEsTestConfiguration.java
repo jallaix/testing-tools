@@ -1,7 +1,8 @@
 package info.jallaix.spring.data.es.test;
 
+import info.jallaix.spring.data.es.test.util.TestClientOperations;
+import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.NodeBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,7 +35,6 @@ public class SpringDataEsTestConfiguration {
      */
     @Bean
     public ElasticsearchOperations elasticsearchTemplate() {
-
         return new ElasticsearchTemplate(elasticsearchClient());
     }
 
@@ -44,7 +44,6 @@ public class SpringDataEsTestConfiguration {
      */
     @Bean
     public TestDocumentsLoader testDocumentsLoader() {
-
         return new TestDocumentsLoader(elasticsearchClient());
     }
 
@@ -54,7 +53,6 @@ public class SpringDataEsTestConfiguration {
      */
     @Bean
     public TestClientOperations testClientOperations() {
-
         return new TestClientOperations(elasticsearchClient());
     }
 }
