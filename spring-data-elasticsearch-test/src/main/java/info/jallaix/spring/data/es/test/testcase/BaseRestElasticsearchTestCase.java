@@ -37,9 +37,70 @@ import static org.junit.Assert.fail;
 
 /**
  * <p>
- * Test class for the Spring Data REST Elasticsearch module.
+ * Test class for the Spring Data REST Elasticsearch module.<br>
+ * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br>
+ * It also performs generic CRUD (POST, GET, PUT, DELETE) tests on the tested repository.<br>
+ *
  * <p>
- * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.
+ * The REST web service must verify the following tests related to <b>entity creation</b> (POST) :
+ * <ul>
+ *     <li>Creating an entity returns a {@code 400 Bad Request} HTTP status code if no entity data is provided.</li>
+ *     <li>
+ *         Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
+ *         Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors} method.
+ *     </li>
+ *     <li>
+ *         Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
+ *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ *     </li>
+ *     <li>
+ *         Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
+ *         The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ *     </li>
+ * </ul>
+ *
+ * <p>
+ * The REST web service must verify the following tests related to <b>entity search</b> :
+ * <ul>
+ *     <li>
+ *         Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
+ *         The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ *     </li>
+ *     <li>
+ *         Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
+ *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ *     </li>
+ *     <li>
+ *         Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ *         The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ *     </li>
+ *     <li>
+ *         Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ *         The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ *         The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+ *     </li>
+ * </ul>
+ *
+ * <p>
+ * The REST web service must verify the following tests related to <b>entity update</b> :
+ * <ul>
+ *     <li>
+ *         Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+ *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ *     </li>
+ *     <li>
+ *         Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+ *         The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ *     </li>
+ *     <li>
+ *         Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
+ *         The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ *     </li>
+ *     <li>
+ *         Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
+ *         The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+ *     </li>
+ * </ul>
  */
 @SuppressWarnings("unused")
 public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends BaseElasticsearchTestCase<T, ID, R> {
@@ -131,7 +192,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
@@ -141,15 +202,17 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
+     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createDuplicateEntity() {
-        postEntity(newDocumentToUpdate(), HttpStatus.CONFLICT, true);
+        postEntity(newExistingDocument(), HttpStatus.CONFLICT, true);
     }
 
     /**
      * Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
+     * The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
@@ -164,36 +227,62 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
+     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
-    public void findOneMissingEntity() { getEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true); }
+    public void findMissingEntity() { getEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true); }
 
     /**
      * Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
+     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
-    public void findOneExistingEntity() { getEntity(newExistingDocument(), HttpStatus.OK, false); }
+    public void findExistingEntity() { getEntity(newExistingDocument(), HttpStatus.OK, false); }
 
     /**
-     * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+     * Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
      */
-    @Category(RestTestedMethod.FindAllSorted.class)
+    @Category(RestTestedMethod.FindAll.class)
     @Test
-    public void findAllEntitiesSorted() {
+    public void findEntities() {
         getEntities();
     }
 
     /**
-     * Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+     * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+     * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+     */
+    @Category(RestTestedMethod.FindAllSorted.class)
+    @Test
+    public void findEntitiesSorted() {
+        getEntities(true);
+    }
+
+    /**
+     * Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+     * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
      */
     @Category(RestTestedMethod.FindAllPageable.class)
     @Test
-    public void findAllPagedEntitiesSorted() {
+    public void findEntitiesPaged() {
 
-        getEntities(0);
-        getEntities(1);
+        getEntities(false, 0);
+        getEntities(false, 1);
+    }
+
+    /**
+     * Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+     * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+     * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+     */
+    @Category(RestTestedMethod.FindAllPageable.class)
+    @Test
+    public void findEntitiesPagedSorted() {
+
+        getEntities(true, 0);
+        getEntities(true, 1);
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -202,41 +291,45 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /*
      * Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateEntityWithoutId() { putEntity(null, null, HttpStatus.METHOD_NOT_ALLOWED, true); }
+    public void updateEntityWithoutId() { putEntity(null, HttpStatus.METHOD_NOT_ALLOWED, true); }
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+     * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     */
+    @Category(RestTestedMethod.Update.class)
+    @Test
+    public void updateEmptyEntity() { putEntity(newExistingDocument(), HttpStatus.BAD_REQUEST, true, null, true); }
+
+    /**
+     * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateInvalidEntity() {
-        putEntity(getIdFieldValue(newExistingDocument()), null, HttpStatus.BAD_REQUEST, true);
+        getExpectedValidationErrors().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
      * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
+     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateMissingEntity() {
-
-        T document = newDocumentToInsert();
-        putEntity(getIdFieldValue(document), document, HttpStatus.NOT_FOUND, true);
-    }
+    public void updateMissingEntity() { putEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true); }
 
     /**
      * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
+     * The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateValidEntity() {
-
-        T expectedEntity = newDocumentToUpdate();
-        putEntity(getIdFieldValue(expectedEntity), expectedEntity, HttpStatus.OK, false);
-    }
+    public void updateValidEntity() { putEntity(newDocumentToUpdate(), HttpStatus.OK, false); }
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -350,14 +443,24 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The found entity resources
      */
     @SuppressWarnings("unused")
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities() { return getEntities(null); }
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities() { return getEntities(false, null); }
 
     /**
      * Call the REST web service to get all entities
+     * @param sorted {@code true} if entities are sorted
+     * @return The found entity resources
+     */
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted) {
+        return getEntities(sorted, null);
+    }
+
+    /**
+     * Call the REST web service to get all entities
+     * @param sorted {@code true} if entities are sorted
      * @param page {@code null} if no page is request, else a page number starting from 0
      * @return The found entity resources
      */
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(Integer page) {
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
 
         // Get user-defined sort field and page size
         final Field sortField = getSortField();
@@ -365,13 +468,23 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Build GET request parameters for sorting and paging
         final String urlParams =
-                "?sort=" + sortField.getName() + ",desc" +
-                (page == null ? "" : "&page=" + page + "&size=" + pageSize);
+                (!sorted && page == null ? "" : "?" +
+                        (!sorted ? "&" : "sort=" + sortField.getName() + ",desc" +
+                                (page == null ? "" : "&")) +
+                        (page == null ? "" : "page=" + page + "&size=" + pageSize)
+                );
 
         // Define the fixture for comparison of entities
-        final List<T> documents = page != null ?
-            testClientOperations.findAllDocumentsByPage(getDocumentMetadata(), getDocumentClass(), sortField, page, pageSize) :
-            testClientOperations.findAllDocumentsSorted(getDocumentMetadata(), getDocumentClass(), sortField, defaultPageSize);
+        final List<T> documents =
+                page != null ?
+                        (sorted ?
+                                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), getDocumentClass(), sortField, page, pageSize) :
+                                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), getDocumentClass(), page, pageSize)
+                        ) :
+                        (sorted ?
+                                testClientOperations.findAllDocumentsSorted(getDocumentMetadata(), getDocumentClass(), sortField) :
+                                testClientOperations.findAllDocuments(getDocumentMetadata(), getDocumentClass())
+                        );
         final List<Resource<T>> fixture = documents
                 .stream()
                 .map(this::convertToResource)
@@ -390,7 +503,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
         assertThat(responseEntity.getBody().getContent().toArray(), is(fixture.toArray()));
         if (totalDocuments > documents.size())
-            assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedLanguagesLinks(page).toArray()));
+            assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedLanguagesLinks(sorted, page).toArray()));
         else
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getLanguagesLinks().toArray()));
 
@@ -399,32 +512,55 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Call the REST web service to update
-     * @param id Identifier of the entity resource to update
      * @param entity Entity data to update
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError {@code true} if an error is expected
      * @return The updated entity resource
      */
     @SuppressWarnings("unused")
-    protected ResponseEntity<Resource<T>> putEntity(ID id, T entity, HttpStatus expectedStatus, boolean expectedError) {
-        return putEntity(id, entity, expectedStatus, expectedError, null);
+    protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError) {
+        return putEntity(entity, expectedStatus, expectedError, null);
     }
 
     /**
      * Call the REST web service to update
-     * @param id Identifier of the entity resource to update
      * @param entity Entity data to update
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
      * @return The updated entity resource
      */
-    protected ResponseEntity<Resource<T>> putEntity(ID id, T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+    protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+        return putEntity(entity, expectedStatus, expectedError, expectedErrors, false);
+    }
+
+    /**
+     * Call the REST web service to update
+     * @param entity Entity data to update
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError {@code true} if an error is expected
+     * @param expectedErrors Expected validation errors to assert
+     * @param emptyBody To send an empty body
+     * @return The updated entity resource
+     */
+    protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
+
+        // Identifier of the entity resource to update
+        final ID id;
+        if (entity != null)
+            id = getIdFieldValue(entity);
+        else
+            id = null;
 
         // Define headers and body
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.parseMediaType("application/hal+json"));
-        HttpEntity<T> httpEntity = new HttpEntity<>(entity, httpHeaders);
+        final HttpEntity<T> httpEntity;
+        if (entity == null || emptyBody)
+            httpEntity = null;
+        else {
+            HttpHeaders httpHeaders = new HttpHeaders();
+            httpHeaders.setContentType(MediaType.parseMediaType("application/hal+json"));
+            httpEntity = new HttpEntity<>(entity, httpHeaders);
+        }
 
         try {
             // Send a PUT request
@@ -504,9 +640,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Get expected HATEOAS links when requesting paged language resources
      *
+     * @param sorted {@code true} if entities are sorted
+     * @param page {@code null} if no page is request, else a page number starting from 0
      * @return A list of HATEOAS links
      */
-    protected List<Link> getPagedLanguagesLinks(Integer page) {
+    protected List<Link> getPagedLanguagesLinks(boolean sorted, Integer page) {
 
         final int pageNo = (page == null) ? 0 : page;
         final String fieldToSortBy = getSortField().getName();
@@ -515,13 +653,13 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final long lastPage = documentCount / pageSize - (documentCount % pageSize == 0 ? 1 : 0);
 
         List<Link> links = new ArrayList<>();
-        links.add(new Link(getWebServiceUrl().toString() + "?page=0&size=" + pageSize + "&sort=" + fieldToSortBy + ",desc", "first"));
+        links.add(new Link(getWebServiceUrl().toString() + "?page=0&size=" + pageSize + (sorted ? "&sort=" + fieldToSortBy + ",desc" : ""), "first"));
         if (pageNo > 0)
-            links.add(new Link(getWebServiceUrl().toString() + "?page=" + (pageNo - 1) + "&size=" + pageSize + "&sort=" + fieldToSortBy + ",desc", "prev"));
+            links.add(new Link(getWebServiceUrl().toString() + "?page=" + (pageNo - 1) + "&size=" + pageSize + (sorted ? "&sort=" + fieldToSortBy + ",desc" : ""), "prev"));
         links.add(new Link(getWebServiceUrl().toString()));
         if (pageNo < lastPage)
-            links.add(new Link(getWebServiceUrl().toString() + "?page=" + (pageNo + 1) + "&size=" + pageSize + "&sort=" + fieldToSortBy + ",desc", "next"));
-        links.add(new Link(getWebServiceUrl().toString() + "?page=" + lastPage + "&size=" + pageSize + "&sort=" + fieldToSortBy + ",desc", "last"));
+            links.add(new Link(getWebServiceUrl().toString() + "?page=" + (pageNo + 1) + "&size=" + pageSize + (sorted ? "&sort=" + fieldToSortBy + ",desc" : ""), "next"));
+        links.add(new Link(getWebServiceUrl().toString() + "?page=" + lastPage + "&size=" + pageSize + (sorted ? "&sort=" + fieldToSortBy + ",desc" : ""), "last"));
         links.add(new Link(getWebServiceUrl(true).toString(), "profile"));
 
         return links;

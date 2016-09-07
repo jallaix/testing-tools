@@ -272,8 +272,10 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findAllDocuments() {
 
-        List<T> initialList = testClientOperations.findAllDocuments(getDocumentMetadata(), getDocumentClass());
+        // Fixture
+        List<T> initialList = testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), getDocumentClass(), 0, (int)this.getTestDocumentsLoader().getLoadedDocumentCount());
 
+        // Repository search
         List<T> foundList = new ArrayList<>();
         getRepository().findAll()
                 .forEach(foundList::add);
@@ -288,13 +290,39 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findAllDocumentsByIdentifier() {
 
+        // Fixture
         List<T> initialList = testClientOperations.findAllDocuments(getDocumentMetadata(), getDocumentClass());
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
 
+        // Repository search
         List<T> foundList = new ArrayList<>();
         getRepository().findAll(initialKeys)
+                .forEach(foundList::add);
+
+        assertArrayEquals(initialList.toArray(), foundList.toArray());
+    }
+
+    /**
+     * Finding a page of existing documents returns an iterable with all these documents.
+     */
+    @Category(DaoTestedMethod.FindAllSorted.class)
+    @Test
+    public void findAllDocumentsSorted() {
+
+        // Fixture
+        List<T> initialList = testClientOperations.findAllDocumentsPagedSorted(
+                getDocumentMetadata(),
+                getDocumentClass(),
+                getSortField(),
+                0,
+                (int)this.getTestDocumentsLoader().getLoadedDocumentCount());
+
+        // Repository search
+        Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
+        List<T> foundList = new ArrayList<>();
+        getRepository().findAll(sorting)
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
@@ -313,55 +341,78 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int pageSize = getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
-        Field sortField = getSortField();
 
-        // Define sorting parameter
-        Sort sorting = new Sort(Sort.Direction.DESC, getDocumentIdField().getName());
-
-        // Find first page
-        List<T> initialList = testClientOperations.findAllDocumentsByPage(
+        // Fixture for first page
+        List<T> initialList = testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 getDocumentClass(),
-                sortField,
                 0,
                 pageSize);
+
+        // Repository search
         List<T> foundList = new ArrayList<>();
-        getRepository().findAll(new PageRequest(0, pageSize, sorting))
+        getRepository().findAll(new PageRequest(0, pageSize))
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
-        // Find last page
-        initialList = testClientOperations.findAllDocumentsByPage(
+        // Fixture for last page
+        initialList = testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 getDocumentClass(),
-                sortField,
                 nbPages - 1,
                 pageSize);
+
+        // Repository search
         foundList.clear();
-        getRepository().findAll(new PageRequest(nbPages - 1, pageSize, sorting))
+        getRepository().findAll(new PageRequest(nbPages - 1, pageSize))
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());
     }
 
     /**
-     * Finding a page of existing documents returns an iterable with all these documents.
+     * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
      */
-    @Category(DaoTestedMethod.FindAllSorted.class)
+    @Category(DaoTestedMethod.FindAllPageable.class)
     @Test
-    public void findAllDocumentsSorted() {
+    public void findAllDocumentsByPageSorted() {
 
-        // Define sorting parameter
-        Sort sorting = new Sort(Sort.Direction.DESC, getDocumentIdField().getName());
+        // Define the page parameters
+        long documentsCount = testClientOperations.countDocuments(getDocumentMetadata());
+        Assert.isTrue(documentsCount > 0, "No document loaded");
+        int pageSize = getPageSize();
+        Assert.isTrue(pageSize > 0, "Page size must be positive");
+        int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+        Field sortField = getSortField();
 
-        // Find first page
-        List<T> initialList = testClientOperations.findAllDocumentsSorted(
+        // Fixture for first page
+        List<T> initialList = testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
                 getDocumentClass(),
-                getSortField());
+                sortField,
+                0,
+                pageSize);
+
+        // Repository search
+        Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
         List<T> foundList = new ArrayList<>();
-        getRepository().findAll(sorting)
+        getRepository().findAll(new PageRequest(0, pageSize, sorting))
+                .forEach(foundList::add);
+
+        assertArrayEquals(initialList.toArray(), foundList.toArray());
+
+        // Fixture for last page
+        initialList = testClientOperations.findAllDocumentsPagedSorted(
+                getDocumentMetadata(),
+                getDocumentClass(),
+                sortField,
+                nbPages - 1,
+                pageSize);
+
+        // Repository search
+        foundList.clear();
+        getRepository().findAll(new PageRequest(nbPages - 1, pageSize, sorting))
                 .forEach(foundList::add);
 
         assertArrayEquals(initialList.toArray(), foundList.toArray());

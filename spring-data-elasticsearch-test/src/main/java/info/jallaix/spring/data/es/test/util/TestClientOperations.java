@@ -65,14 +65,41 @@ public class TestClientOperations {
      * @return The typed documents found
      */
     public <T> List<T> findAllDocuments(Document documentMetadata, Class<T> documentClass) {
+        return findAllDocumentsPaged(documentMetadata, documentClass, 0, 10);
+    }
+
+    /**
+     * Find all typed document with sorting
+     * @param <T> A typed document type
+     * @param documentMetadata The Elastic document metadata
+     * @param documentClass The document class
+     * @param documentSortField The document sort field
+     * @return The typed documents found
+     */
+    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField) {
+        return findAllDocumentsPagedSorted(documentMetadata, documentClass, documentSortField, 0, 10);
+    }
+
+    /**
+     * Find all typed document with sorting
+     * @param <T> A typed document type
+     * @param documentMetadata The Elastic document metadata
+     * @param documentClass The document class
+     * @param pageNo The page number to get
+     * @param pageSize The page size
+     * @return The typed documents found
+     */
+    public <T> List<T> findAllDocumentsPaged(Document documentMetadata, Class<T> documentClass, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
                 esClient.prepareSearch(documentMetadata.indexName())
-                    .setTypes(documentMetadata.type())
-                    .execute()
-                    .actionGet()
-                    .getHits()
-                    .spliterator(), false)
+                        .setTypes(documentMetadata.type())
+                        .setFrom(pageNo * pageSize)
+                        .setSize(pageSize)
+                        .execute()
+                        .actionGet()
+                        .getHits()
+                        .spliterator(), false)
                 .map(hit -> fromJson(hit, documentClass))
                 .collect(Collectors.toList());
     }
@@ -87,7 +114,7 @@ public class TestClientOperations {
      * @param pageSize The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsByPage(Document documentMetadata, Class<T> documentClass, Field documentSortField, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsPagedSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
             esClient.prepareSearch(documentMetadata.indexName())
@@ -101,31 +128,6 @@ public class TestClientOperations {
                     .spliterator(), false)
                 .map(hit -> fromJson(hit, documentClass))
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Find all typed document with sorting
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
-     * @param documentSortField The document sort field
-     * @param pageSize The page size
-     * @return The typed documents found
-     */
-    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField, int pageSize) {
-        return findAllDocumentsByPage(documentMetadata, documentClass, documentSortField, 0, pageSize);
-    }
-
-    /**
-     * Find all typed document with sorting
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
-     * @param documentSortField The document sort field
-     * @return The typed documents found
-     */
-    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField) {
-        return findAllDocumentsSorted(documentMetadata, documentClass, documentSortField, 10);  // 10 is the default page size
     }
 
     /**
