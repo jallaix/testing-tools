@@ -70,9 +70,14 @@ import static org.junit.Assert.fail;
  *         Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
  *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
  *     </li>
+ *     <li>Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.</li>
  *     <li>
  *         Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
  *         The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ *     </li>
+ *     <li>
+ *         Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ *         The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
  *     </li>
  *     <li>
  *         Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
@@ -144,7 +149,6 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                     RestTestedMethod.Update.class,
                     RestTestedMethod.FindAll.class,
                     RestTestedMethod.FindAllPageable.class,
-                    RestTestedMethod.FindAllSorted.class,
                     RestTestedMethod.FindOne.class,
                     RestTestedMethod.DeleteAll.class,
                     RestTestedMethod.DeleteById.class));
@@ -254,7 +258,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
      * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
      */
-    @Category(RestTestedMethod.FindAllSorted.class)
+    @Category(RestTestedMethod.FindAll.class)
     @Test
     public void findEntitiesSorted() {
         getEntities(true);
@@ -464,7 +468,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Get user-defined sort field and page size
         final Field sortField = getSortField();
-        final int pageSize = getPageSize();
+        final int pageSize = (page == null) ? defaultPageSize : getPageSize();  // Spring Data REST always get paged resources even if
 
         // Build GET request parameters for sorting and paging
         final String urlParams =
@@ -474,22 +478,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                         (page == null ? "" : "page=" + page + "&size=" + pageSize)
                 );
 
-        // Define the fixture for comparison of entities
-        final List<T> documents =
-                page != null ?
-                        (sorted ?
-                                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), getDocumentClass(), sortField, page, pageSize) :
-                                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), getDocumentClass(), page, pageSize)
-                        ) :
-                        (sorted ?
-                                testClientOperations.findAllDocumentsSorted(getDocumentMetadata(), getDocumentClass(), sortField) :
-                                testClientOperations.findAllDocuments(getDocumentMetadata(), getDocumentClass())
-                        );
+        // Define the fixture for entities comparison
+        final List<T> documents = sorted ?
+                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), getDocumentClass(), sortField, (page != null) ? page : 0, pageSize) :
+                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), getDocumentClass(), (page != null) ? page : 0, pageSize);
         final List<Resource<T>> fixture = documents
                 .stream()
                 .map(this::convertToResource)
                 .collect(Collectors.toList());
+
+        // Define the fixture for metadata comparison
         final long totalDocuments = this.getTestDocumentsLoader().getLoadedDocumentCount();
+        PagedResources.PageMetadata metadata = new PagedResources.PageMetadata(pageSize, (page == null ? 0 : page), totalDocuments);
 
         // Send a GET request
         final ResponseEntity<PagedResources<Resource<T>>> responseEntity =
@@ -499,10 +499,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                         null,
                         getPagedResourcesType());
 
-        // Verify the expected HTTP status code and body content
-        assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
-        assertThat(responseEntity.getBody().getContent().toArray(), is(fixture.toArray()));
-        if (totalDocuments > documents.size())
+        // Assert the entity response matches the expected one
+        assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));                      // Verify HTTP status code
+        assertThat(responseEntity.getBody().getMetadata(), is(metadata));                   // Verify body metadata
+        assertThat(responseEntity.getBody().getContent().toArray(), is(fixture.toArray())); // Verify body content
+        if (totalDocuments > documents.size())                                              // Verify body links
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedLanguagesLinks(sorted, page).toArray()));
         else
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getLanguagesLinks().toArray()));
@@ -649,7 +650,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final int pageNo = (page == null) ? 0 : page;
         final String fieldToSortBy = getSortField().getName();
         final int pageSize = (page == null) ? defaultPageSize : getPageSize();
-        final long documentCount = testClientOperations.countDocuments(getDocumentMetadata());
+        final long documentCount = this.getTestDocumentsLoader().getLoadedDocumentCount();
         final long lastPage = documentCount / pageSize - (documentCount % pageSize == 0 ? 1 : 0);
 
         List<Link> links = new ArrayList<>();
