@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -106,6 +107,19 @@ import static org.junit.Assert.fail;
  *         The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
  *     </li>
  * </ul>
+ *
+ * <p>
+ * The REST web service must verify the following tests related to <b>entity deletion</b> :
+ * <ul>
+ *     <li>Deleting an entity returns a {@code 405 Method Not Allowed } HTTP status code if no identifier is provided.</li>
+ *     <li>
+ *         Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
+ *         The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ *     </li>
+ *     <li>
+ *         Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
+ *         The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ *     </li>
  */
 @SuppressWarnings("unused")
 public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends BaseElasticsearchTestCase<T, ID, R> {
@@ -150,8 +164,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                     RestTestedMethod.FindAll.class,
                     RestTestedMethod.FindAllPageable.class,
                     RestTestedMethod.FindOne.class,
-                    RestTestedMethod.DeleteAll.class,
-                    RestTestedMethod.DeleteById.class));
+                    RestTestedMethod.Delete.class));
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
     }
@@ -272,8 +285,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Test
     public void findEntitiesPaged() {
 
-        getEntities(false, 0);
-        getEntities(false, 1);
+        int totalPages = getTotalPages();
+        for (int i = 0; i < totalPages; i++)
+            getEntities(false, i);
     }
 
     /**
@@ -285,8 +299,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Test
     public void findEntitiesPagedSorted() {
 
-        getEntities(true, 0);
-        getEntities(true, 1);
+        int totalPages = getTotalPages();
+        for (int i = 0; i < totalPages; i++)
+            getEntities(true, i);
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -339,6 +354,34 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                    Tests related to language deletion                                          */
     /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Deleting an entity returns a {@code 405 Method Not Allowed } HTTP status code if no identifier is provided.
+     */
+    @Category(RestTestedMethod.Delete.class)
+    @Test
+    public void deleteWithoutId() {
+        deleteEntity(null, HttpStatus.METHOD_NOT_ALLOWED, false, null);
+    }
+
+    /**
+     * Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
+     * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     */
+    @Test
+    public void deleteMissingEntity() {
+        deleteEntity(getIdFieldValue(newDocumentToInsert()), HttpStatus.NOT_FOUND, false, null);
+    }
+
+    /**
+     * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
+     * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     */
+    @Test
+    public void deleteExistingEntity() {
+        deleteEntity(getIdFieldValue(newExistingDocument()), HttpStatus.NO_CONTENT, false, null);
+    }
+
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                         Sub-class helper methods                                               */
@@ -595,6 +638,47 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
+     * Call the REST web service to delete
+     * @param id Entity identifier to delete
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError {@code true} if an error is expected
+     * @param expectedErrors Expected validation errors to assert
+     * @return No resource
+     */
+    protected ResponseEntity<Resource<T>> deleteEntity(ID id, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+
+        try {
+            // Send a DELETE request
+            ResponseEntity<Resource<T>> responseEntity =
+                    getHalRestTemplate().exchange(
+                            getWebServiceUrl() + (id == null ? "" : "/" + id),
+                            HttpMethod.DELETE,
+                            null,
+                            getResourceType());
+
+            if (expectedError)  // No exception thrown whereas one is expected
+                fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
+
+            else {  // No exception is expected, verify the expected HTTP status code and return the response
+                assertThat(responseEntity, is(notNullValue()));
+                assertThat(responseEntity.getStatusCode(), is(expectedStatus));
+                assertThat(responseEntity.getBody(), is(nullValue()));
+                return responseEntity;
+            }
+        }
+
+        // The DELETE request results in an error response
+        catch (HttpStatusCodeException e) {
+
+            assertThat(e.getStatusCode(), is(expectedStatus));  // Verify the expected HTTP status code
+            if (expectedErrors != null)                         // Verify that validation errors are the expected ones
+                assertThat(findValidationErrors(e).toArray(), is(expectedErrors.toArray()));
+        }
+
+        return null;
+    }
+
+    /**
      * Convert an entity to a resource containing the entity with HATEOAS links
      *
      * @param entity The language to convert
@@ -624,6 +708,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         }
 
         return result;
+    }
+
+    /**
+     * Compute the total number of pages
+     * @return The total number of pages
+     */
+    protected int getTotalPages() {
+
+        long totalElements = this.getTestDocumentsLoader().getLoadedDocumentCount();
+        int pageSize = getPageSize();
+
+        return (int)Math.ceil((double)totalElements / (double)pageSize);
     }
 
     /**

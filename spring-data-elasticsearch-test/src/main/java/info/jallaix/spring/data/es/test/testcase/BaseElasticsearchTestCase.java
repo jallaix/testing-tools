@@ -1,7 +1,7 @@
 package info.jallaix.spring.data.es.test.testcase;
 
-import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import info.jallaix.spring.data.es.test.util.DocumentMetaDataUtil;
+import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import lombok.AccessLevel;
 import lombok.Getter;
 import org.junit.After;
@@ -43,6 +43,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /**
      * Tested repository
      */
+    @SuppressWarnings("SpringJavaAutowiringInspection")
     @Autowired
     @Getter(AccessLevel.PROTECTED)
     private R repository;
@@ -71,6 +72,22 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     @Getter(AccessLevel.PROTECTED)
     private Field documentIdField;
 
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                               Tests life cycle                                                 */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    @Before
+    public void init() {
+
+        selectTests();              // Exit if the test is not configured to be played
+        feedElasticIndex();         // Fixture data for testing
+    }
+
+    @After
+    public void exit() {
+        terminateElasticIndex();    // Free fixture data
+    }
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                               Abstract methods                                                 */
@@ -114,8 +131,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /**
      * Create an Elasticsearch index and type and load custom data in it.
      */
-    @Before
-    public void initElasticIndex() {
+    public void feedElasticIndex() {
 
         initDocumentClass();                                            // Find document class
         DocumentMetaDataUtil<T> documentMetaDataUtil = new DocumentMetaDataUtil<>(documentClass);
@@ -130,7 +146,6 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /**
      * Free resources used by Elastic.
      */
-    @After
     public void terminateElasticIndex() { testDocumentsLoader.terminateElasticIndex(); }
 
     /**
@@ -166,7 +181,6 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /*                                            Configurable test system                                            */
     /*----------------------------------------------------------------------------------------------------------------*/
 
-    @Before
     public void selectTests() {
         Assume.assumeTrue(isTestPlayed(testedMethods));
     }

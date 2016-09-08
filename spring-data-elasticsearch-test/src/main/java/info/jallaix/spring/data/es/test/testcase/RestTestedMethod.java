@@ -10,6 +10,5 @@ public interface RestTestedMethod {
     public interface FindAll extends RestTestedMethod {}
     public interface FindAllPageable extends RestTestedMethod {}
     public interface Update extends RestTestedMethod {}
-    public interface DeleteAll extends RestTestedMethod {}
-    public interface DeleteById extends RestTestedMethod {}
+    public interface Delete extends RestTestedMethod {}
 }
