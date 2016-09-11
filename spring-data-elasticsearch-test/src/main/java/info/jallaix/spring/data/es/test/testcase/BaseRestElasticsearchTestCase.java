@@ -37,89 +37,89 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 /**
- * <p>
+ * <p/>
  * Test class for the Spring Data REST Elasticsearch module.<br>
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br>
  * It also performs generic CRUD (POST, GET, PUT, DELETE) tests on the tested repository.<br>
- *
- * <p>
+ * <p/>
+ * <p/>
  * The REST web service must verify the following tests related to <b>entity creation</b> (POST) :
  * <ul>
- *     <li>Creating an entity returns a {@code 400 Bad Request} HTTP status code if no entity data is provided.</li>
- *     <li>
- *         Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
- *         Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors} method.
- *     </li>
- *     <li>
- *         Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
- *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
- *     </li>
- *     <li>
- *         Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
- *         The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
- *     </li>
+ * <li>Creating an entity returns a {@code 400 Bad Request} HTTP status code if no entity data is provided.</li>
+ * <li>
+ * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
+ * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate} method.
+ * </li>
+ * <li>
+ * Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
+ * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
+ * The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * </li>
  * </ul>
- *
- * <p>
+ * <p/>
+ * <p/>
  * The REST web service must verify the following tests related to <b>entity search</b> :
  * <ul>
- *     <li>
- *         Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
- *         The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
- *     </li>
- *     <li>
- *         Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
- *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
- *     </li>
- *     <li>Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.</li>
- *     <li>
- *         Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- *         The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
- *     </li>
- *     <li>
- *         Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- *         The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
- *     </li>
- *     <li>
- *         Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- *         The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
- *         The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
- *     </li>
+ * <li>
+ * Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
+ * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * </li>
+ * <li>
+ * Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
+ * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.</li>
+ * <li>
+ * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ * </li>
+ * <li>
+ * Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+ * </li>
+ * <li>
+ * Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
+ * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+ * </li>
  * </ul>
- *
- * <p>
+ * <p/>
+ * <p/>
  * The REST web service must verify the following tests related to <b>entity update</b> :
  * <ul>
- *     <li>
- *         Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
- *         The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
- *     </li>
- *     <li>
- *         Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
- *         The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
- *     </li>
- *     <li>
- *         Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
- *         The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
- *     </li>
- *     <li>
- *         Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
- *         The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
- *     </li>
+ * <li>
+ * Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+ * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+ * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
+ * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * </li>
+ * <li>
+ * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
+ * The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+ * </li>
  * </ul>
- *
- * <p>
+ * <p/>
+ * <p/>
  * The REST web service must verify the following tests related to <b>entity deletion</b> :
  * <ul>
- *     <li>Deleting an entity returns a {@code 405 Method Not Allowed } HTTP status code if no identifier is provided.</li>
- *     <li>
- *         Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
- *         The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
- *     </li>
- *     <li>
- *         Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
- *         The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
- *     </li>
+ * <li>Deleting an entity returns a {@code 405 Method Not Allowed } HTTP status code if no identifier is provided.</li>
+ * <li>
+ * Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
+ * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * </li>
+ * <li>
+ * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
+ * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
  */
 @SuppressWarnings("unused")
 public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends BaseElasticsearchTestCase<T, ID, R> {
@@ -176,12 +176,14 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Get the resource type for JSON/Object mapping.
+     *
      * @return The resource type
      */
     protected abstract TypeReferences.ResourceType<T> getResourceType();
 
     /**
      * Get the paged resources type for JSON/Object mapping.
+     *
      * @return The paged resources type
      */
     protected abstract TypeReferences.PagedResourcesType<Resource<T>> getPagedResourcesType();
@@ -189,9 +191,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Return a map of entities linked to a list of expected validation errors.
      * Each entity must hold a set of properties that causes some validation errors to occur.
+     *
      * @return The map of entities linked to a list of expected validation errors
      */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrors();
+    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnCreateOrUpdate();
+
+    /**
+     * Return a map of entities linked to a list of expected validation errors that occur when attempting to delete an entity.
+     * Each entity must hold a set of properties that causes some validation errors to occur.
+     *
+     * @return The map of entities linked to a list of expected validation errors
+     */
+    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnDelete();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -209,12 +220,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createInvalidEntity() {
-        getExpectedValidationErrors().forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
@@ -248,7 +259,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
-    public void findMissingEntity() { getEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true); }
+    public void findMissingEntity() {
+        getEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+    }
 
     /**
      * Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
@@ -256,7 +269,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
-    public void findExistingEntity() { getEntity(newExistingDocument(), HttpStatus.OK, false); }
+    public void findExistingEntity() {
+        getEntity(newExistingDocument(), HttpStatus.OK, false);
+    }
 
     /**
      * Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
@@ -314,7 +329,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateEntityWithoutId() { putEntity(null, HttpStatus.METHOD_NOT_ALLOWED, true); }
+    public void updateEntityWithoutId() {
+        putEntity(null, HttpStatus.METHOD_NOT_ALLOWED, true);
+    }
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
@@ -322,16 +339,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateEmptyEntity() { putEntity(newExistingDocument(), HttpStatus.BAD_REQUEST, true, null, true); }
+    public void updateEmptyEntity() {
+        putEntity(newExistingDocument(), HttpStatus.BAD_REQUEST, true, null, true);
+    }
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrors()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateInvalidEntity() {
-        getExpectedValidationErrors().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
@@ -340,7 +359,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateMissingEntity() { putEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true); }
+    public void updateMissingEntity() {
+        putEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+    }
 
     /**
      * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
@@ -348,7 +369,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @Category(RestTestedMethod.Update.class)
     @Test
-    public void updateValidEntity() { putEntity(newDocumentToUpdate(), HttpStatus.OK, false); }
+    public void updateValidEntity() {
+        putEntity(newDocumentToUpdate(), HttpStatus.OK, false);
+    }
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -374,6 +397,16 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
+     * Deleting an entity returns a {@code 400 Bad Request} HTTP status code if it is not valid.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnDelete()} method.
+     */
+    @Category(RestTestedMethod.Create.class)
+    @Test
+    public void deleteInvalidEntity() {
+        getExpectedValidationErrorsOnDelete().forEach((entity, errors) -> deleteEntity(getIdFieldValue(entity), HttpStatus.BAD_REQUEST, true, errors));
+    }
+
+    /**
      * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
      * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      */
@@ -388,10 +421,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Call the REST web service to create an entity
-     * @param entity Entity data to create
+     * Call the REST web service to create an entity.
+     *
+     * @param entity         Entity data to create
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @return The created entity resource
      */
     @SuppressWarnings("unused")
@@ -400,10 +434,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to create an entity
-     * @param entity Entity data to create
+     * Call the REST web service to create an entity.
+     *
+     * @param entity         Entity data to create
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
      * @return The created entity resource
      */
@@ -445,10 +480,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to get an entity
+     * Call the REST web service to get an entity.
+     *
      * @param expectedEntity Expected entity to be found
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @return The found entity resource
      */
     @SuppressWarnings("unused")
@@ -486,14 +522,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to get all entities
+     * Call the REST web service to get all entities.
+     *
      * @return The found entity resources
      */
     @SuppressWarnings("unused")
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities() { return getEntities(false, null); }
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities() {
+        return getEntities(false, null);
+    }
 
     /**
-     * Call the REST web service to get all entities
+     * Call the REST web service to get all entities.
+     *
      * @param sorted {@code true} if entities are sorted
      * @return The found entity resources
      */
@@ -502,9 +542,10 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to get all entities
+     * Call the REST web service to get all entities.
+     *
      * @param sorted {@code true} if entities are sorted
-     * @param page {@code null} if no page is request, else a page number starting from 0
+     * @param page   {@code null} if no page is request, else a page number starting from 0
      * @return The found entity resources
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
@@ -555,10 +596,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to update
-     * @param entity Entity data to update
+     * Call the REST web service to update.
+     *
+     * @param entity         Entity data to update
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @return The updated entity resource
      */
     @SuppressWarnings("unused")
@@ -567,10 +609,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to update
-     * @param entity Entity data to update
+     * Call the REST web service to update.
+     *
+     * @param entity         Entity data to update
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
      * @return The updated entity resource
      */
@@ -579,12 +622,13 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to update
-     * @param entity Entity data to update
+     * Call the REST web service to update.
+     *
+     * @param entity         Entity data to update
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
-     * @param emptyBody To send an empty body
+     * @param emptyBody      To send an empty body
      * @return The updated entity resource
      */
     protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
@@ -638,10 +682,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Call the REST web service to delete
-     * @param id Entity identifier to delete
+     * Call the REST web service to delete.
+     *
+     * @param id             Entity identifier to delete
      * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError {@code true} if an error is expected
+     * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
      * @return No resource
      */
@@ -679,7 +724,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Convert an entity to a resource containing the entity with HATEOAS links
+     * Convert an entity to a resource containing the entity with HATEOAS links.
      *
      * @param entity The language to convert
      * @return The resource containing a language
@@ -711,7 +756,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Compute the total number of pages
+     * Compute the total number of pages.
+     *
      * @return The total number of pages
      */
     protected int getTotalPages() {
@@ -719,11 +765,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         long totalElements = this.getTestDocumentsLoader().getLoadedDocumentCount();
         int pageSize = getPageSize();
 
-        return (int)Math.ceil((double)totalElements / (double)pageSize);
+        return (int) Math.ceil((double) totalElements / (double) pageSize);
     }
 
     /**
-     * Get expected HATEOAS links when requesting language resources
+     * Get expected HATEOAS links when requesting language resources.
      *
      * @return A list of HATEOAS links
      */
@@ -738,7 +784,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * Get expected HATEOAS links when requesting paged language resources
      *
      * @param sorted {@code true} if entities are sorted
-     * @param page {@code null} if no page is request, else a page number starting from 0
+     * @param page   {@code null} if no page is request, else a page number starting from 0
      * @return A list of HATEOAS links
      */
     protected List<Link> getPagedLanguagesLinks(boolean sorted, Integer page) {
@@ -767,7 +813,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Get URL of the web service to test
+     * Get URL of the web service to test.
+     *
      * @return URL of the web service to test
      */
     private URI getWebServiceUrl() {
@@ -775,7 +822,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Get URL of the web service to test
+     * Get URL of the web service to test.
+     *
      * @param profile Indicate if a profile URL is returned
      * @return URL of the web service to test
      */
@@ -791,7 +839,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Get a HAL REST template
+     * Get a HAL REST template.
+     *
      * @return A HAL REST template
      */
     private RestTemplate getHalRestTemplate() {
@@ -804,11 +853,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         converter.setSupportedMediaTypes(MediaType.parseMediaTypes("application/hal+json"));
         converter.setObjectMapper(mapper);
 
-        return new RestTemplate(Collections.<HttpMessageConverter<?>> singletonList(converter));
+        return new RestTemplate(Collections.<HttpMessageConverter<?>>singletonList(converter));
     }
 
     /**
-     * Find validation errors from the HTTP exception body
+     * Find validation errors from the HTTP exception body.
+     *
      * @param httpException HTTP exception that contains validation errors
      * @return The list of validation errors found
      */
@@ -820,7 +870,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             JsonNode errorsNode = mapper.readTree(httpException.getResponseBodyAsString()).get("errors");
 
             // Map each error to a ValidationError object
-            TypeReference<ArrayList<ValidationError>> typeRef = new TypeReference<ArrayList<ValidationError>>() {};
+            TypeReference<ArrayList<ValidationError>> typeRef = new TypeReference<ArrayList<ValidationError>>() {
+            };
             return mapper.readValue(errorsNode.traverse(), typeRef);
 
         } catch (IOException ioe) {
