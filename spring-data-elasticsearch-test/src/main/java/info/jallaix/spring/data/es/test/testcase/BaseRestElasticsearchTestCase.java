@@ -1,7 +1,6 @@
 package info.jallaix.spring.data.es.test.testcase;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
@@ -14,11 +13,8 @@ import org.springframework.data.elasticsearch.repository.ElasticsearchRepository
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.PagedResources;
 import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.hal.Jackson2HalModule;
 import org.springframework.hateoas.mvc.TypeReferences;
 import org.springframework.http.*;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
@@ -148,6 +144,10 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @SuppressWarnings("SpringJavaAutowiredMembersInspection")
     @Autowired
     private TestClientOperations testClientOperations;
+
+    @SuppressWarnings("SpringJavaAutowiredMembersInspection")
+    @Autowired
+    private RestTemplate restTemplate;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -489,7 +489,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         try {
             // Send a POST request
             final ResponseEntity<Resource<T>> responseEntity =
-                    getHalRestTemplate().exchange(
+                    restTemplate.exchange(
                             getWebServiceUrl(),
                             HttpMethod.POST,
                             httpEntity,
@@ -534,7 +534,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         try {
             // Send a GET request
             final ResponseEntity<Resource<T>> responseEntity =
-                    getHalRestTemplate().exchange(
+                    restTemplate.exchange(
                             expectedResource.getId().getHref(),
                             HttpMethod.GET,
                             httpEntity,
@@ -605,8 +605,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Define the fixture for entities comparison
         final List<T> documents = sorted ?
-                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), getDocumentClass(), sortField, (page != null) ? page : 0, pageSize) :
-                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), getDocumentClass(), (page != null) ? page : 0, pageSize);
+                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetaData(), sortField, (page != null) ? page : 0, pageSize) :
+                testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), (page != null) ? page : 0, pageSize);
         final List<Resource<T>> fixture = documents
                 .stream()
                 .map(this::convertToResource)
@@ -618,7 +618,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Send a GET request
         final ResponseEntity<PagedResources<Resource<T>>> responseEntity =
-                getHalRestTemplate().exchange(
+                restTemplate.exchange(
                         getWebServiceUrl() + urlParams,
                         HttpMethod.GET,
                         httpEntity,
@@ -652,7 +652,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         try {
             // Send a HEAD request
             final ResponseEntity<?> responseEntity =
-                    getHalRestTemplate().exchange(
+                    restTemplate.exchange(
                             expectedResource.getId().getHref(),
                             HttpMethod.HEAD,
                             httpEntity,
@@ -676,7 +676,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Send a HEAD request
         final ResponseEntity<?> responseEntity =
-                getHalRestTemplate().exchange(
+                restTemplate.exchange(
                         getWebServiceUrl(),
                         HttpMethod.HEAD,
                         httpEntity,
@@ -738,7 +738,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         try {
             // Send a PUT request
             final ResponseEntity<Resource<T>> responseEntity =
-                    getHalRestTemplate().exchange(
+                    restTemplate.exchange(
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.PUT,
                             httpEntity,
@@ -781,7 +781,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         try {
             // Send a DELETE request
             final ResponseEntity<?> responseEntity =
-                    getHalRestTemplate().exchange(
+                    restTemplate.exchange(
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.DELETE,
                             httpEntity,
@@ -826,7 +826,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         // Get the identifier value
         String id;
         try {
-            id = getDocumentIdField().get(entity).toString();
+            id = getDocumentMetaData().getDocumentIdField().get(entity).toString();
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -834,12 +834,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         // Convert entity into resource
         Resource<T> result = new Resource<>(entity);
         result.add(new Link(getWebServiceUrl().toString() + "/" + id));
-        result.add(new Link(getWebServiceUrl().toString() + "/" + id, getDocumentClass().getSimpleName().toLowerCase()));
+        result.add(new Link(getWebServiceUrl().toString() + "/" + id, getDocumentMetaData().getDocumentClass().getSimpleName().toLowerCase()));
 
         // Set the resource identifier to "null" : the identifier isn't sent in the entity response
-        getDocumentIdField().setAccessible(true);
+        getDocumentMetaData().getDocumentIdField().setAccessible(true);
         try {
-            getDocumentIdField().set(result.getContent(), null);
+            getDocumentMetaData().getDocumentIdField().set(result.getContent(), null);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -921,31 +921,13 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     private URI getWebServiceUrl(boolean profile) {
 
-        final String webContext = "/" + getDocumentClass().getSimpleName().toLowerCase() + "s";
+        final String webContext = "/" + getDocumentMetaData().getDocumentClass().getSimpleName().toLowerCase() + "s";
 
         try {
             return new URI("http", null, "localhost", serverPort, (profile ? "/profile" : "") + webContext, null, null);
         } catch (URISyntaxException e) {
             throw new RuntimeException("Invalid server URI", e);
         }
-    }
-
-    /**
-     * Get a HAL REST template.
-     *
-     * @return A HAL REST template
-     */
-    private RestTemplate getHalRestTemplate() {
-
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        mapper.registerModule(new Jackson2HalModule());
-
-        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setSupportedMediaTypes(MediaType.parseMediaTypes("application/hal+json"));
-        converter.setObjectMapper(mapper);
-
-        return new RestTemplate(Collections.<HttpMessageConverter<?>>singletonList(converter));
     }
 
     /**

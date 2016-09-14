@@ -1,6 +1,7 @@
 package info.jallaix.spring.data.es.test.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * <p>
+ * <p/>
  * This class is used to performed low level operations on an Elasticsearch index.
  * Unit tests may perform index operations without using Spring Data.
  */
@@ -40,12 +41,16 @@ public class TestClientOperations {
 
     /**
      * Constructor with Elasticsearch client
+     *
      * @param esClient the Elasticsearch client
      */
-    public TestClientOperations(Client esClient) { this.esClient = esClient; }
+    public TestClientOperations(Client esClient) {
+        this.esClient = esClient;
+    }
 
     /**
      * Count the number of typed documents in the index.
+     *
      * @param documentMetadata The Elastic document metadata
      * @return The number of typed documents found
      */
@@ -59,81 +64,82 @@ public class TestClientOperations {
 
     /**
      * Find all typed documents in the index.
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
+     *
+     * @param <T>              The document type
+     * @param documentMetaData The Elasticsearch document metadata
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocuments(Document documentMetadata, Class<T> documentClass) {
-        return findAllDocumentsPaged(documentMetadata, documentClass, 0, 10);
+    public <T> List<T> findAllDocuments(DocumentMetaData<T> documentMetaData) {
+        return findAllDocumentsPaged(documentMetaData, 0, 10);
     }
 
     /**
      * Find all typed document with sorting
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
+     *
+     * @param <T>               The document type
+     * @param documentMetaData  The Elasticsearch document metadata
      * @param documentSortField The document sort field
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField) {
-        return findAllDocumentsPagedSorted(documentMetadata, documentClass, documentSortField, 0, 10);
+    public <T> List<T> findAllDocumentsSorted(DocumentMetaData<T> documentMetaData, Field documentSortField) {
+        return findAllDocumentsPagedSorted(documentMetaData, documentSortField, 0, 10);
     }
 
     /**
      * Find all typed document with sorting
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
-     * @param pageNo The page number to get
-     * @param pageSize The page size
+     *
+     * @param <T>              The document type
+     * @param documentMetaData The Elasticsearch document metadata
+     * @param pageNo           The page number to get
+     * @param pageSize         The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsPaged(Document documentMetadata, Class<T> documentClass, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsPaged(DocumentMetaData<T> documentMetaData, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
-                esClient.prepareSearch(documentMetadata.indexName())
-                        .setTypes(documentMetadata.type())
+                esClient.prepareSearch(documentMetaData.getDocumentAnnotation().indexName())
+                        .setTypes(documentMetaData.getDocumentAnnotation().type())
                         .setFrom(pageNo * pageSize)
                         .setSize(pageSize)
                         .execute()
                         .actionGet()
                         .getHits()
                         .spliterator(), false)
-                .map(hit -> fromJson(hit, documentClass))
+                .map(hit -> fromJson(hit, documentMetaData.getDocumentClass()))
                 .collect(Collectors.toList());
     }
 
     /**
      * Find all typed document belonging to a page with sorting
-     * @param <T> A typed document type
-     * @param documentMetadata The Elastic document metadata
-     * @param documentClass The document class
+     *
+     * @param <T>               The document type
+     * @param documentMetaData  The Elasticsearch document metadata
      * @param documentSortField The document sort field
-     * @param pageNo The page number to get
-     * @param pageSize The page size
+     * @param pageNo            The page number to get
+     * @param pageSize          The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsPagedSorted(Document documentMetadata, Class<T> documentClass, Field documentSortField, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsPagedSorted(DocumentMetaData<T> documentMetaData, Field documentSortField, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
-            esClient.prepareSearch(documentMetadata.indexName())
-                    .setTypes(documentMetadata.type())
-                    .setFrom(pageNo * pageSize)
-                    .setSize(pageSize)
-                    .addSort(documentSortField.getName(), SortOrder.DESC)
-                    .execute()
-                    .actionGet()
-                    .getHits()
-                    .spliterator(), false)
-                .map(hit -> fromJson(hit, documentClass))
+                esClient.prepareSearch(documentMetaData.getDocumentAnnotation().indexName())
+                        .setTypes(documentMetaData.getDocumentAnnotation().type())
+                        .setFrom(pageNo * pageSize)
+                        .setSize(pageSize)
+                        .addSort(documentSortField.getName(), SortOrder.DESC)
+                        .execute()
+                        .actionGet()
+                        .getHits()
+                        .spliterator(), false)
+                .map(hit -> fromJson(hit, documentMetaData.getDocumentClass()))
                 .collect(Collectors.toList());
     }
 
     /**
      * Convert an Elasticsearch hit to an entity
-     * @param <T> A typed document type
-     * @param hit The search hit
+     *
+     * @param <T>           The document type
+     * @param hit           The search hit
      * @param documentClass The document class
      * @return The entity
      */

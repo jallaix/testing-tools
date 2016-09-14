@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Validation error used for testing
+ * Validation error used for testing.
  * <ul>
  *    <li>{@code entity} - {@link String} - Simple entity name
  *    <li>{@code message} - {@link String} - Error message

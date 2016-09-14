@@ -1,6 +1,7 @@
 package info.jallaix.spring.data.es.test.testcase;
 
-import info.jallaix.spring.data.es.test.util.DocumentMetaDataUtil;
+import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
+import info.jallaix.spring.data.es.test.util.DocumentMetaDataBuilder;
 import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -11,7 +12,6 @@ import org.junit.Rule;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
 import java.io.Serializable;
@@ -22,9 +22,9 @@ import java.util.Arrays;
 import java.util.Set;
 
 /**
- * <p>
+ * <p/>
  * Test class for the Spring Data Elasticsearch module.
- * <p>
+ * <p/>
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.
  */
 public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> {
@@ -58,19 +58,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
      * Elastic document metadata
      */
     @Getter(AccessLevel.PROTECTED)
-    private Document documentMetadata;
-
-    /**
-     * Class of the document
-     */
-    @Getter(AccessLevel.PROTECTED)
-    private Class<T> documentClass;
-
-    /**
-     * Document identifier
-     */
-    @Getter(AccessLevel.PROTECTED)
-    private Field documentIdField;
+    private DocumentMetaData<T> documentMetaData;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -95,30 +83,35 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
     /**
      * Return a new document for insertion.
+     *
      * @return A document that will be inserted
      */
     protected abstract T newDocumentToInsert();
 
     /**
      * Return a new document for update.
+     *
      * @return A document that will update an existing one
      */
     protected abstract T newDocumentToUpdate();
 
     /**
      * Return a new existing document.
+     *
      * @return A document that exists
      */
     protected abstract T newExistingDocument();
 
     /**
      * Return the sort field
+     *
      * @return The sort field
      */
     protected abstract Field getSortField();
 
     /**
      * Return the size of a page to get
+     *
      * @return The size of a page to get
      */
     protected abstract int getPageSize();
@@ -133,27 +126,32 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
      */
     public void feedElasticIndex() {
 
-        initDocumentClass();                                            // Find document class
-        DocumentMetaDataUtil<T> documentMetaDataUtil = new DocumentMetaDataUtil<>(documentClass);
-        documentMetadata = documentMetaDataUtil.getDocumentMetadata();  // Find document metadata (index, type)
-        documentIdField = documentMetaDataUtil.getIdFieldForDocument(); // Find document identifier
-        testDocumentsLoader.initElasticIndex(                           // Load documents into index
-                documentMetadata.indexName(),
-                documentMetadata.type(),
+        // Initialize document metadata
+        documentMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(initDocumentClass());
+
+        // Load documents into index
+        testDocumentsLoader.initElasticIndex(
+                documentMetaData.getDocumentAnnotation().indexName(),
+                documentMetaData.getDocumentAnnotation().type(),
                 this.getClass().getName());
     }
 
     /**
      * Free resources used by Elastic.
      */
-    public void terminateElasticIndex() { testDocumentsLoader.terminateElasticIndex(); }
+    public void terminateElasticIndex() {
+        testDocumentsLoader.terminateElasticIndex();
+    }
 
     /**
      * Get the test documents loader
+     *
      * @return The test documents loader
      */
     @SuppressWarnings("unused")
-    protected TestDocumentsLoader getTestDocumentsLoader() { return testDocumentsLoader; }
+    protected TestDocumentsLoader getTestDocumentsLoader() {
+        return testDocumentsLoader;
+    }
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -162,6 +160,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
     /**
      * Get the identifier value of a document
+     *
      * @param document The document
      * @return The found identifier value
      */
@@ -169,7 +168,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
         try {
             @SuppressWarnings("unchecked")
-            ID id = (ID)documentIdField.get(document);
+            ID id = (ID) documentMetaData.getDocumentIdField().get(document);
             return id;
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
@@ -219,12 +218,13 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /**
      * Initialize the document class
      */
-    private void initDocumentClass() {
+    private Class<T> initDocumentClass() {
 
         // Find document class
         final ParameterizedType superClass = (ParameterizedType) getClass().getGenericSuperclass();
         final Type[] types = superClass.getActualTypeArguments();
+
         //noinspection unchecked
-        documentClass = (Class<T>) types[0];
+        return (Class<T>) types[0];
     }
 }
