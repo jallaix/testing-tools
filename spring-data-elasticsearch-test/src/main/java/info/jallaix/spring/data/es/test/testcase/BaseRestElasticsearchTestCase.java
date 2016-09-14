@@ -30,9 +30,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
@@ -85,6 +83,14 @@ import static org.junit.Assert.fail;
  * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
  * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
  * </li>
+ * </ul>
+ * <p/>
+ * <p/>
+ * The REST web service must verify the following tests related to <b>entity existence</b> :
+ * <ul>
+ * <li>HEADing an existing entity returns a {@code 204 No Content} HTTP status code.</li>
+ * <li>HEADing a missing entity returns a {@code 404 Not Found} HTTP status code.</li>
+ * <li>HEADing an entity collection returns a {@code 204 No Content} HTTP status code.</li>
  * </ul>
  * <p/>
  * <p/>
@@ -164,6 +170,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                     RestTestedMethod.FindAll.class,
                     RestTestedMethod.FindAllPageable.class,
                     RestTestedMethod.FindOne.class,
+                    RestTestedMethod.Exist.class,
                     RestTestedMethod.Delete.class));
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
@@ -319,8 +326,41 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             getEntities(true, i);
     }
 
+
     /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                     Tests related to language update                                           */
+    /*                                      Tests related to entity existence                                         */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * HEADing an existing entity returns a {@code 204 No Content} HTTP status code.
+     */
+    @Category(RestTestedMethod.Exist.class)
+    @Test
+    public void headExistingEntity() {
+        headEntity(newExistingDocument(), HttpStatus.NO_CONTENT, false);
+    }
+
+    /**
+     * HEADing a missing entity returns a {@code 404 Not Found} HTTP status code.
+     */
+    @Category(RestTestedMethod.Exist.class)
+    @Test
+    public void headMissingEntity() {
+        headEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+    }
+
+    /**
+     * HEADing an entity collection returns a {@code 204 No Content} HTTP status code.
+     */
+    @Category(RestTestedMethod.Exist.class)
+    @Test
+    public void headExistingEntities() {
+        headEntities(HttpStatus.NO_CONTENT, false);
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                      Tests related to entity update                                            */
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /*
@@ -375,7 +415,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                    Tests related to language deletion                                          */
+    /*                                     Tests related to entity deletion                                           */
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
@@ -444,14 +484,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<Resource<T>> postEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
 
-        // Define headers and body
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.parseMediaType("application/hal+json"));
-        HttpEntity<T> httpEntity = new HttpEntity<>(entity, httpHeaders);
+        final HttpEntity<T> httpEntity = convertToHttpEntity(entity);           // Define Hal+Json HTTP entity
 
         try {
             // Send a POST request
-            ResponseEntity<Resource<T>> responseEntity =
+            final ResponseEntity<Resource<T>> responseEntity =
                     getHalRestTemplate().exchange(
                             getWebServiceUrl(),
                             HttpMethod.POST,
@@ -490,15 +527,17 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @SuppressWarnings("unused")
     protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
 
-        Resource<T> expectedResource = convertToResource(expectedEntity);
+        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+
+        final Resource<T> expectedResource = convertToResource(expectedEntity);
 
         try {
             // Send a GET request
-            ResponseEntity<Resource<T>> responseEntity =
+            final ResponseEntity<Resource<T>> responseEntity =
                     getHalRestTemplate().exchange(
                             expectedResource.getId().getHref(),
                             HttpMethod.GET,
-                            null,
+                            httpEntity,
                             getResourceType());
 
             if (expectedError)  // No exception thrown whereas one is expected
@@ -550,6 +589,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
 
+        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+
         // Get user-defined sort field and page size
         final Field sortField = getSortField();
         final int pageSize = (page == null) ? defaultPageSize : getPageSize();  // Spring Data REST always get paged resources even if
@@ -580,7 +621,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                 getHalRestTemplate().exchange(
                         getWebServiceUrl() + urlParams,
                         HttpMethod.GET,
-                        null,
+                        httpEntity,
                         getPagedResourcesType());
 
         // Assert the entity response matches the expected one
@@ -593,6 +634,58 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getLanguagesLinks().toArray()));
 
         return responseEntity;
+    }
+
+    /**
+     * Call the REST web service to verify if an entity exists.
+     *
+     * @param expectedEntity Expected entity to be found
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     */
+    protected void headEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
+
+        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+
+        final Resource<T> expectedResource = convertToResource(expectedEntity);
+
+        try {
+            // Send a HEAD request
+            final ResponseEntity<?> responseEntity =
+                    getHalRestTemplate().exchange(
+                            expectedResource.getId().getHref(),
+                            HttpMethod.HEAD,
+                            httpEntity,
+                            getResourceType());
+
+            assertHeadMissingBody(expectedStatus, expectedError, responseEntity);
+        }
+
+        // The POST request results in an error response
+        catch (HttpStatusCodeException e) {
+            assertThat(e.getStatusCode(), is(HttpStatus.NOT_FOUND));    // Verify the expected HTTP status code
+        }
+    }
+
+    /**
+     * Call the REST web service to head all entities.
+     */
+    protected void headEntities(HttpStatus expectedStatus, boolean expectedError) {
+
+        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+
+        // Send a HEAD request
+        final ResponseEntity<?> responseEntity =
+                getHalRestTemplate().exchange(
+                        getWebServiceUrl(),
+                        HttpMethod.HEAD,
+                        httpEntity,
+                        getPagedResourcesType());
+
+        // Assert the entity response matches the expected one
+        assertThat(responseEntity, is(notNullValue()));
+        assertThat(responseEntity.getStatusCode(), is(expectedStatus));                     // Verify HTTP status code
+        assertThat(responseEntity.getBody(), is(nullValue()));
     }
 
     /**
@@ -633,6 +726,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
 
+        final HttpEntity<T> httpEntity = convertToHttpEntity(entity == null || emptyBody ? null : entity);  // Define Hal+Json HTTP entity
+
         // Identifier of the entity resource to update
         final ID id;
         if (entity != null)
@@ -640,19 +735,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         else
             id = null;
 
-        // Define headers and body
-        final HttpEntity<T> httpEntity;
-        if (entity == null || emptyBody)
-            httpEntity = null;
-        else {
-            HttpHeaders httpHeaders = new HttpHeaders();
-            httpHeaders.setContentType(MediaType.parseMediaType("application/hal+json"));
-            httpEntity = new HttpEntity<>(entity, httpHeaders);
-        }
-
         try {
             // Send a PUT request
-            ResponseEntity<Resource<T>> responseEntity =
+            final ResponseEntity<Resource<T>> responseEntity =
                     getHalRestTemplate().exchange(
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.PUT,
@@ -688,28 +773,21 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
-     * @return No resource
      */
-    protected ResponseEntity<Resource<T>> deleteEntity(ID id, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+    protected void deleteEntity(ID id, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
+
+        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         try {
             // Send a DELETE request
-            ResponseEntity<Resource<T>> responseEntity =
+            final ResponseEntity<?> responseEntity =
                     getHalRestTemplate().exchange(
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.DELETE,
-                            null,
+                            httpEntity,
                             getResourceType());
 
-            if (expectedError)  // No exception thrown whereas one is expected
-                fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
-
-            else {  // No exception is expected, verify the expected HTTP status code and return the response
-                assertThat(responseEntity, is(notNullValue()));
-                assertThat(responseEntity.getStatusCode(), is(expectedStatus));
-                assertThat(responseEntity.getBody(), is(nullValue()));
-                return responseEntity;
-            }
+            assertHeadMissingBody(expectedStatus, expectedError, responseEntity);
         }
 
         // The DELETE request results in an error response
@@ -719,8 +797,22 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             if (expectedErrors != null)                         // Verify that validation errors are the expected ones
                 assertThat(findValidationErrors(e).toArray(), is(expectedErrors.toArray()));
         }
+    }
 
-        return null;
+    /**
+     * Convert an entity to an Hal+Json HTTP entity
+     *
+     * @param entity The entity to convert
+     * @return The converted entity
+     */
+    protected HttpEntity<T> convertToHttpEntity(T entity) {
+
+        // Define headers and body
+        final HttpHeaders httpHeaders = new HttpHeaders() {{
+            setContentType(MediaType.parseMediaType("application/hal+json"));
+        }};
+
+        return new HttpEntity<>(entity, httpHeaders);
     }
 
     /**
@@ -878,6 +970,25 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
             fail("Could not convert response body into JSON");
             return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Assert the expected status code is verified and the response body is missing.
+     *
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     * @param responseEntity Entity response to inspect
+     */
+    private void assertHeadMissingBody(final HttpStatus expectedStatus, boolean expectedError, final ResponseEntity<?> responseEntity) {
+
+        if (expectedError)  // No exception thrown whereas one is expected
+            fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
+
+        else {  // No exception is expected, verify the expected HTTP status code and response body then return the response
+            assertThat(responseEntity, is(notNullValue()));
+            assertThat(responseEntity.getStatusCode(), is(expectedStatus));
+            assertThat(responseEntity.getBody(), is(nullValue()));
         }
     }
 }
