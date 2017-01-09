@@ -11,5 +11,6 @@ public interface RestTestedMethod {
     public interface FindAllPageable extends RestTestedMethod {}
     public interface Exist extends RestTestedMethod {}
     public interface Update extends RestTestedMethod {}
+    public interface Patch extends RestTestedMethod {}
     public interface Delete extends RestTestedMethod {}
 }

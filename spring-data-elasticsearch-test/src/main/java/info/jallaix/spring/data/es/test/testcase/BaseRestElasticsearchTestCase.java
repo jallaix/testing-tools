@@ -3,13 +3,16 @@ package info.jallaix.spring.data.es.test.testcase;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.diff.JsonDiff;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
+import org.apache.commons.codec.Charsets;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import org.springframework.data.rest.webmvc.RestMediaTypes;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.PagedResources;
 import org.springframework.hateoas.Resource;
@@ -107,6 +110,27 @@ import static org.junit.Assert.fail;
  * <li>
  * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
  * The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+ * </li>
+ * </ul>
+ * <p/>
+ * <p/>
+ * The REST web service must verify the following tests related to <b>entity patching</b> :
+ * <ul>
+ * <li>
+ * Patching an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+ * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Patching an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+ * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Patching an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
+ * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * </li>
+ * <li>
+ * Patching an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
+ * The entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
  * </li>
  * </ul>
  * <p/>
@@ -394,7 +418,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
+     * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing entity to update.
      * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Update.class)
@@ -415,6 +439,69 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                     Tests related to entity patching                                           */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+
+    /*
+     * Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchEntityWithoutId() {
+        patchEntity(null, null, HttpStatus.METHOD_NOT_ALLOWED, true);
+    }
+
+    /**
+     * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+     * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchEmptyEntity() {
+        patchEntity(newExistingDocument(), null, HttpStatus.BAD_REQUEST, true, null, true);
+    }
+
+    /**
+     * Patching an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchInvalidEntity() {
+        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> patchEntity(newExistingDocument(), entity, HttpStatus.BAD_REQUEST, true, errors, false));
+    }
+
+    /**
+     * Patching an entity returns {@code 404 Not Found} HTTP status code if there is no existing entity to patch.
+     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchMissingEntity() { patchEntity(newDocumentToInsert(), null, HttpStatus.NOT_FOUND, true); }
+
+    /**
+     * Patching an existing entity returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
+     * The entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method, whereas the fields to update are defined
+     * by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} and the {@link BaseRestElasticsearchTestCase#getSortField()} methods.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchValidEntity() throws IllegalAccessException {
+
+        // Entity to patch
+        final T sourceEntity = newExistingDocument();
+
+        // Entity to match after patching
+        T targetEntity = newDocumentToUpdate();
+        getSortField().set(targetEntity, getSortField().get(sourceEntity)); // The sort field won't be patched
+
+        patchEntity(sourceEntity, targetEntity, HttpStatus.OK, false);
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
     /*                                     Tests related to entity deletion                                           */
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -431,6 +518,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
      * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
      */
+    @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteMissingEntity() {
         deleteEntity(getIdFieldValue(newDocumentToInsert()), HttpStatus.NOT_FOUND, false, null);
@@ -440,7 +528,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * Deleting an entity returns a {@code 400 Bad Request} HTTP status code if it is not valid.
      * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnDelete()} method.
      */
-    @Category(RestTestedMethod.Create.class)
+    @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteInvalidEntity() {
         getExpectedValidationErrorsOnDelete().forEach((entity, errors) -> deleteEntity(getIdFieldValue(entity), HttpStatus.BAD_REQUEST, true, errors));
@@ -450,6 +538,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
      * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      */
+    @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteExistingEntity() {
         deleteEntity(getIdFieldValue(newExistingDocument()), HttpStatus.NO_CONTENT, false, null);
@@ -484,7 +573,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<Resource<T>> postEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(entity);           // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(entity);           // Define Hal+Json HTTP entity
 
         try {
             // Send a POST request
@@ -495,14 +584,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             httpEntity,
                             getResourceType());
 
-
-            if (expectedError)  // No exception thrown whereas one is expected
-                fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
-
-            else {  // No exception is expected, verify the expected HTTP status code and return the response
-                assertThat(responseEntity.getStatusCode(), is(expectedStatus));
-                return responseEntity;
-            }
+            assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
         }
 
         // The POST request results in an error response
@@ -527,7 +609,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @SuppressWarnings("unused")
     protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         final Resource<T> expectedResource = convertToResource(expectedEntity);
 
@@ -589,7 +671,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         // Get user-defined sort field and page size
         final Field sortField = getSortField();
@@ -645,7 +727,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected void headEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         final Resource<T> expectedResource = convertToResource(expectedEntity);
 
@@ -658,7 +740,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             httpEntity,
                             getResourceType());
 
-            assertHeadMissingBody(expectedStatus, expectedError, responseEntity);
+            assertMissingBody(expectedStatus, expectedError, responseEntity);
         }
 
         // The POST request results in an error response
@@ -672,7 +754,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected void headEntities(HttpStatus expectedStatus, boolean expectedError) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         // Send a HEAD request
         final ResponseEntity<?> responseEntity =
@@ -726,14 +808,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected ResponseEntity<Resource<T>> putEntity(T entity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(entity == null || emptyBody ? null : entity);  // Define Hal+Json HTTP entity
+        // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(entity == null || emptyBody ? null : entity);
 
         // Identifier of the entity resource to update
-        final ID id;
-        if (entity != null)
-            id = getIdFieldValue(entity);
-        else
-            id = null;
+        final ID id = (entity != null) ? getIdFieldValue(entity) : null;
 
         try {
             // Send a PUT request
@@ -744,17 +823,79 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             httpEntity,
                             getResourceType());
 
-            if (expectedError)  // No exception thrown whereas one is expected
-                fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
-
-            else {  // No exception is expected, verify the expected HTTP status code and return the response
-                assertThat(responseEntity, is(notNullValue()));
-                assertThat(responseEntity.getStatusCode(), is(expectedStatus));
-                assertThat(responseEntity.getBody(), is(convertToResource(entity)));
-                return responseEntity;
-            }
+            assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
         }
 
+        // The PUT request results in an error response
+        catch (HttpStatusCodeException e) {
+
+            assertThat(e.getStatusCode(), is(expectedStatus));  // Verify the expected HTTP status code
+            if (expectedErrors != null)                         // Verify that validation errors are the expected ones
+                assertThat(findValidationErrors(e).toArray(), is(expectedErrors.toArray()));
+        }
+
+        return null;
+    }
+
+    /**
+     * Call the REST web service to partially update.
+     *
+     * @param sourceEntity   Original entity data
+     * @param targetEntity   Entity with some field values different from the original entity
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     * @return The updated entity resource
+     */
+    protected ResponseEntity<Resource<T>> patchEntity(T sourceEntity, T targetEntity, HttpStatus expectedStatus, boolean expectedError) {
+        return patchEntity(sourceEntity, targetEntity, expectedStatus, expectedError, null, false);
+    }
+
+    /**
+     * Call the REST web service to partially update.
+     *
+     * @param sourceEntity   Original entity data
+     * @param targetEntity   Entity with some field values different from the original entity
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     * @param expectedErrors Expected validation errors to assert
+     * @param emptyBody      To send an empty body
+     * @return The updated entity resource
+     */
+    protected ResponseEntity<Resource<T>> patchEntity(T sourceEntity, T targetEntity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
+
+        // Define Patch+Json HTTP entity
+        final MediaType JSON_PATCH_JSON_UTF8 = new MediaType(RestMediaTypes.JSON_PATCH_JSON, Collections.singletonMap("charset", Charsets.UTF_8.displayName()));
+        final HttpEntity<?> httpEntity;
+        if (sourceEntity == null || emptyBody)
+            httpEntity = convertToHttpEntity(null, JSON_PATCH_JSON_UTF8);   // Set empty body to the HTTP entity
+        else {
+            final ObjectMapper mapper = new ObjectMapper(); // JSON converter
+
+            // Get entity to patch and entity to match after patching in JSON format
+            final JsonNode jsonSource = mapper.valueToTree(sourceEntity);
+            final JsonNode jsonTarget = mapper.valueToTree(targetEntity == null ? sourceEntity : targetEntity);
+
+            // Get a patch operation in Patch+Json format
+            final JsonNode jsonPatch = JsonDiff.asJson(jsonSource, jsonTarget);
+
+            // Set the Patch+Json value to the HTTP entity's body
+            httpEntity = convertToHttpEntity(jsonPatch.toString(), JSON_PATCH_JSON_UTF8);
+        }
+
+        // Identifier of the entity resource to update
+        final ID id = (sourceEntity != null) ? getIdFieldValue(sourceEntity) : null;
+
+        try {
+            // Send a PATCH request
+            final ResponseEntity<Resource<T>> responseEntity =
+                    restTemplate.exchange(
+                            getWebServiceUrl() + (id == null ? "" : "/" + id),
+                            HttpMethod.PATCH,
+                            httpEntity,
+                            getResourceType());
+
+            assertExistingBody(expectedStatus, expectedError, responseEntity, targetEntity);
+        }
         // The PUT request results in an error response
         catch (HttpStatusCodeException e) {
 
@@ -776,7 +917,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     protected void deleteEntity(ID id, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors) {
 
-        final HttpEntity<T> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         try {
             // Send a DELETE request
@@ -787,7 +928,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             httpEntity,
                             getResourceType());
 
-            assertHeadMissingBody(expectedStatus, expectedError, responseEntity);
+            assertMissingBody(expectedStatus, expectedError, responseEntity);
         }
 
         // The DELETE request results in an error response
@@ -800,19 +941,28 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Convert an entity to an Hal+Json HTTP entity
+     * Convert an entity to an HTTP entity with Hal+Json content type.
      *
      * @param entity The entity to convert
      * @return The converted entity
      */
-    protected HttpEntity<T> convertToHttpEntity(T entity) {
+    protected HttpEntity<?> convertToHttpEntity(Object entity) {
+        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON);
+    }
+
+    /**
+     * Convert an entity to an HTTP entity with the specified content type.
+     *
+     * @param entity The entity to convert
+     * @param contentType The content type to set
+     * @return The converted entity
+     */
+    protected HttpEntity<?> convertToHttpEntity(Object entity, MediaType contentType) {
 
         // Define headers and body
-        final HttpHeaders httpHeaders = new HttpHeaders() {{
-            setContentType(MediaType.parseMediaType("application/hal+json"));
-        }};
-
-        return new HttpEntity<>(entity, httpHeaders);
+        return new HttpEntity<>(entity, new HttpHeaders() {{
+            setContentType(contentType);
+        }});
     }
 
     /**
@@ -962,7 +1112,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @param expectedError  {@code true} if an error is expected
      * @param responseEntity Entity response to inspect
      */
-    private void assertHeadMissingBody(final HttpStatus expectedStatus, boolean expectedError, final ResponseEntity<?> responseEntity) {
+    private void assertMissingBody(final HttpStatus expectedStatus, boolean expectedError, final ResponseEntity<?> responseEntity) {
 
         if (expectedError)  // No exception thrown whereas one is expected
             fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
@@ -971,6 +1121,26 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             assertThat(responseEntity, is(notNullValue()));
             assertThat(responseEntity.getStatusCode(), is(expectedStatus));
             assertThat(responseEntity.getBody(), is(nullValue()));
+        }
+    }
+
+    /**
+     * Assert the expected status code is verified and the response body matches the expected one.
+     *
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     * @param responseEntity Entity response to inspect
+     * @param expectedEntity Entity that must match the response
+     */
+    private void assertExistingBody(final HttpStatus expectedStatus, boolean expectedError, final ResponseEntity<?> responseEntity, final T expectedEntity) {
+
+        if (expectedError)  // No exception thrown whereas one is expected
+            fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
+
+        else {  // No exception is expected, verify the expected HTTP status code and return the response
+            assertThat(responseEntity, is(notNullValue()));
+            assertThat(responseEntity.getStatusCode(), is(expectedStatus));
+            assertThat(responseEntity.getBody(), is(convertToResource(expectedEntity)));
         }
     }
 }

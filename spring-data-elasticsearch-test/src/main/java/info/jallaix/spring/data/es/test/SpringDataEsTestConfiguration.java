@@ -12,11 +12,15 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
 import org.springframework.hateoas.hal.Jackson2HalModule;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Spring configuration for Elasticsearch repository tests.
@@ -77,16 +81,23 @@ public class SpringDataEsTestConfiguration {
     @Bean
     public RestTemplate halRestTemplate() {
 
-        // Configure Jackson mapper
+        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>();
+
+        // Configure Jackson mapper for Jackson converter
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.registerModule(new Jackson2HalModule());
 
         // Configure Jackson converter
-        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-        converter.setSupportedMediaTypes(MediaType.parseMediaTypes("application/hal+json"));
-        converter.setObjectMapper(mapper);
+        MappingJackson2HttpMessageConverter jacksonConverter = new MappingJackson2HttpMessageConverter();
+        jacksonConverter.setSupportedMediaTypes(MediaType.parseMediaTypes("application/json,application/hal+json,application/patch+json"));
+        jacksonConverter.setObjectMapper(mapper);
+        messageConverters.add(jacksonConverter);
 
-        return new RestTemplate(Collections.<HttpMessageConverter<?>>singletonList(converter));
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+        restTemplate.setMessageConverters(messageConverters);
+
+        return restTemplate;
     }
 }
