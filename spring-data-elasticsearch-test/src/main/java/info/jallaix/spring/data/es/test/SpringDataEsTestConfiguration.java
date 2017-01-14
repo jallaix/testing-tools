@@ -94,6 +94,9 @@ public class SpringDataEsTestConfiguration {
         jacksonConverter.setObjectMapper(mapper);
         messageConverters.add(jacksonConverter);
 
+        // Configure String converter
+        messageConverters.add(new StringHttpMessageConverter());
+
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
         restTemplate.setMessageConverters(messageConverters);

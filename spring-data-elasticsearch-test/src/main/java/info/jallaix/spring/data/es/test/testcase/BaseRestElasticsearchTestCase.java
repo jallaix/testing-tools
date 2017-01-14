@@ -1,9 +1,12 @@
 package info.jallaix.spring.data.es.test.testcase;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
+import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
 import org.apache.commons.codec.Charsets;
@@ -151,6 +154,15 @@ import static org.junit.Assert.fail;
 public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends BaseElasticsearchTestCase<T, ID, R> {
 
     /**
+     * Media type for JSON Patch data
+     */
+    protected static final MediaType JSON_PATCH_JSON_UTF8 = new MediaType(RestMediaTypes.JSON_PATCH_JSON, Collections.singletonMap("charset", Charsets.UTF_8.displayName()));
+    /**
+     * Media type for JSON Merge Patch data
+     */
+    protected static final MediaType MERGE_PATCH_JSON_UTF8 = new MediaType(RestMediaTypes.MERGE_PATCH_JSON, Collections.singletonMap("charset", Charsets.UTF_8.displayName()));
+
+    /**
      * Default page size for REST read operations
      */
     @Value("${spring.data.rest.default-page-size:20}")
@@ -234,6 +246,23 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The map of entities linked to a list of expected validation errors
      */
     protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnDelete();
+
+    /**
+     * Return a map of objects linked to a list of expected validation errors that occur when attempting to patch an entity.
+     * Each object must hold a set of properties that causes some validation errors to occur.
+     *
+     * @return The map of objects linked to a list of expected validation errors
+     */
+    protected abstract Map<Object, List<ValidationError>> getExpectedValidationErrorsOnPatch();
+
+    /**
+     * Return an object with some getters matching the {@link T} entity getters.
+     * The values returned by the getters must be different than those returned by the
+     * {@link BaseElasticsearchTestCase#newExistingDocument()} getters so that patching tests may occur.
+     *
+     * @return An object with some getters matching the {@link T} entity getters.
+     */
+    protected abstract Object newObjectForPatch();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -442,62 +471,76 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*                                     Tests related to entity patching                                           */
     /*----------------------------------------------------------------------------------------------------------------*/
 
-
     /*
-     * Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
-     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * Patching an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
+     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchEntityWithoutId() {
-        patchEntity(null, null, HttpStatus.METHOD_NOT_ALLOWED, true);
+
+        Object patch = newObjectForPatch();
+        patchEntity(true, null, patch, HttpStatus.METHOD_NOT_ALLOWED, true);
+        patchEntity(false, null, patch, HttpStatus.METHOD_NOT_ALLOWED, true);
     }
 
     /**
-     * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
+     * Patching an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
      * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchEmptyEntity() {
-        patchEntity(newExistingDocument(), null, HttpStatus.BAD_REQUEST, true, null, true);
+
+        Object patch = newObjectForPatch();
+        patchEntity(true, newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
+        patchEntity(false, newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
     }
 
     /**
      * Patching an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
+     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * Invalid patch properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnPatch()} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchInvalidEntity() {
-        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> patchEntity(newExistingDocument(), entity, HttpStatus.BAD_REQUEST, true, errors, false));
+
+        T entity = newExistingDocument();
+        getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(true, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
+        getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(false, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
     }
 
     /**
      * Patching an entity returns {@code 404 Not Found} HTTP status code if there is no existing entity to patch.
      * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
-    public void patchMissingEntity() { patchEntity(newDocumentToInsert(), null, HttpStatus.NOT_FOUND, true); }
+    public void patchMissingEntity() {
+
+        Object patch = newObjectForPatch();
+        patchEntity(true, newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
+        patchEntity(false, newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
+    }
 
     /**
      * Patching an existing entity returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
-     * The entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method, whereas the fields to update are defined
-     * by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} and the {@link BaseRestElasticsearchTestCase#getSortField()} methods.
+     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchValidEntity() throws IllegalAccessException {
 
-        // Entity to patch
-        final T sourceEntity = newExistingDocument();
+        // The entity to patch and the patch itself
+        final T entity = newExistingDocument();
+        Object patch = newObjectForPatch();
 
-        // Entity to match after patching
-        T targetEntity = newDocumentToUpdate();
-        getSortField().set(targetEntity, getSortField().get(sourceEntity)); // The sort field won't be patched
-
-        patchEntity(sourceEntity, targetEntity, HttpStatus.OK, false);
+        patchEntity(true, entity, patch, HttpStatus.OK, false);
+        patchEntity(false, entity, patch, HttpStatus.OK, false);
     }
 
 
@@ -840,50 +883,70 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Call the REST web service to partially update.
      *
-     * @param sourceEntity   Original entity data
-     * @param targetEntity   Entity with some field values different from the original entity
+     * @param merge          {@code true} to use JSON Merge Patch format and {@code false} to use JSON Patch format
+     * @param entity         Entity data to patch
+     * @param patch          Object with some getters matching the {@link T} entity getters, used for patching these fields
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError  {@code true} if an error is expected
      * @return The updated entity resource
      */
-    protected ResponseEntity<Resource<T>> patchEntity(T sourceEntity, T targetEntity, HttpStatus expectedStatus, boolean expectedError) {
-        return patchEntity(sourceEntity, targetEntity, expectedStatus, expectedError, null, false);
+    protected ResponseEntity<Resource<T>> patchEntity(boolean merge, T entity, Object patch, HttpStatus expectedStatus, boolean expectedError) {
+        return patchEntity(merge, entity, patch, expectedStatus, expectedError, null, false);
     }
 
     /**
-     * Call the REST web service to partially update.
+     * Call the REST web service to partially update with JSON Patch method.
      *
-     * @param sourceEntity   Original entity data
-     * @param targetEntity   Entity with some field values different from the original entity
+     * @param merge          {@code true} to use JSON Merge Patch format and {@code false} to use JSON Patch format
+     * @param entity         Entity data to patch
+     * @param patch          Object with some getters matching the {@link T} entity getters, used for patching these fields
      * @param expectedStatus Expected HTTP status to assert
      * @param expectedError  {@code true} if an error is expected
      * @param expectedErrors Expected validation errors to assert
      * @param emptyBody      To send an empty body
      * @return The updated entity resource
      */
-    protected ResponseEntity<Resource<T>> patchEntity(T sourceEntity, T targetEntity, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
+    protected ResponseEntity<Resource<T>> patchEntity(boolean merge, T entity, Object patch, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
+
+        final T targetEntity;
 
         // Define Patch+Json HTTP entity
-        final MediaType JSON_PATCH_JSON_UTF8 = new MediaType(RestMediaTypes.JSON_PATCH_JSON, Collections.singletonMap("charset", Charsets.UTF_8.displayName()));
         final HttpEntity<?> httpEntity;
-        if (sourceEntity == null || emptyBody)
-            httpEntity = convertToHttpEntity(null, JSON_PATCH_JSON_UTF8);   // Set empty body to the HTTP entity
-        else {
+        if (entity == null || emptyBody) {
+            // Set empty body to the HTTP entity
+            httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
+            targetEntity = null;
+        } else {
             final ObjectMapper mapper = new ObjectMapper(); // JSON converter
 
-            // Get entity to patch and entity to match after patching in JSON format
-            final JsonNode jsonSource = mapper.valueToTree(sourceEntity);
-            final JsonNode jsonTarget = mapper.valueToTree(targetEntity == null ? sourceEntity : targetEntity);
+            // Convert the object for patching to a JSON merge patch
+            JsonNode jsonMerge = mapper.valueToTree(patch);
 
-            // Get a patch operation in Patch+Json format
-            final JsonNode jsonPatch = JsonDiff.asJson(jsonSource, jsonTarget);
+            // Get entity to patch in JSON format
+            final JsonNode jsonSource = mapper.valueToTree(entity);
 
-            // Set the Patch+Json value to the HTTP entity's body
-            httpEntity = convertToHttpEntity(jsonPatch.toString(), JSON_PATCH_JSON_UTF8);
+            // Get the target entity the PATCH request must match by applying the JSON merge patch to the source entity
+            final JsonNode jsonTarget;
+            try {
+                jsonTarget = JsonMergePatch.fromJson(jsonMerge).apply(jsonSource);
+            } catch (JsonPatchException e) {
+                throw new RuntimeException(e);
+            }
+            try {
+                targetEntity = mapper.treeToValue(jsonTarget, getDocumentMetaData().getDocumentClass());
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Get a patch operation in Json merge patch or Json patch format
+            final JsonNode jsonPatchNode = merge ? jsonMerge : JsonDiff.asJson(jsonSource, jsonTarget);
+
+            // Set the patch value to the HTTP entity's body
+            httpEntity = convertToHttpEntity(jsonPatchNode.toString(), merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
         }
 
         // Identifier of the entity resource to update
-        final ID id = (sourceEntity != null) ? getIdFieldValue(sourceEntity) : null;
+        final ID id = (entity != null) ? getIdFieldValue(entity) : null;
 
         try {
             // Send a PATCH request
@@ -896,7 +959,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
             assertExistingBody(expectedStatus, expectedError, responseEntity, targetEntity);
         }
-        // The PUT request results in an error response
+        // The PATCH request results in an error response
         catch (HttpStatusCodeException e) {
 
             assertThat(e.getStatusCode(), is(expectedStatus));  // Verify the expected HTTP status code
@@ -953,7 +1016,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Convert an entity to an HTTP entity with the specified content type.
      *
-     * @param entity The entity to convert
+     * @param entity      The entity to convert
      * @param contentType The content type to set
      * @return The converted entity
      */
