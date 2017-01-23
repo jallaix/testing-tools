@@ -203,6 +203,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             testedMethods = new HashSet<>(Arrays.asList(
                     RestTestedMethod.Create.class,
                     RestTestedMethod.Update.class,
+                    RestTestedMethod.Patch.class,
                     RestTestedMethod.FindAll.class,
                     RestTestedMethod.FindAllPageable.class,
                     RestTestedMethod.FindOne.class,
@@ -527,7 +528,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Patching an existing entity returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
+     * Patching an existing entity (JSON Patch) returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
      * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
      * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
      */
@@ -539,8 +540,23 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final T entity = newExistingDocument();
         Object patch = newObjectForPatch();
 
-        patchEntity(true, entity, patch, HttpStatus.OK, false);
         patchEntity(false, entity, patch, HttpStatus.OK, false);
+    }
+
+    /**
+     * Patching an existing entity (JSON Merge Patch) returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
+     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
+     */
+    @Category(RestTestedMethod.Patch.class)
+    @Test
+    public void patchValidEntityWithMerge() throws IllegalAccessException {
+
+        // The entity to patch and the patch itself
+        final T entity = newExistingDocument();
+        Object patch = newObjectForPatch();
+
+        patchEntity(true, entity, patch, HttpStatus.OK, false);
     }
 
 
