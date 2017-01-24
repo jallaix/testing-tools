@@ -48,7 +48,7 @@ import static org.junit.Assert.fail;
  * <li>Creating an entity returns a {@code 400 Bad Request} HTTP status code if no entity data is provided.</li>
  * <li>
  * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
- * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate} method.
+ * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreate} method.
  * </li>
  * <li>
  * Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
@@ -105,6 +105,10 @@ import static org.junit.Assert.fail;
  * <li>
  * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
  * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * </li>
+ * <li>
+ * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
+ * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnUpdate} method.
  * </li>
  * <li>
  * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
@@ -219,6 +223,15 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
+     * Return an object with some getters matching the {@link T} entity getters.
+     * The values returned by the getters must be different than those returned by the
+     * {@link BaseElasticsearchTestCase#newExistingDocument()} getters so that patching tests may occur.
+     *
+     * @return An object with some getters matching the {@link T} entity getters.
+     */
+    protected abstract Object newObjectForPatch();
+
+    /**
      * Get the resource type for JSON/Object mapping.
      *
      * @return The resource type
@@ -233,20 +246,20 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     protected abstract TypeReferences.PagedResourcesType<Resource<T>> getPagedResourcesType();
 
     /**
-     * Return a map of entities linked to a list of expected validation errors.
+     * Return a map of entities linked to a list of expected validation errors that occur when attempting to create an entity.
      * Each entity must hold a set of properties that causes some validation errors to occur.
      *
      * @return The map of entities linked to a list of expected validation errors
      */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnCreateOrUpdate();
+    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnCreate();
 
     /**
-     * Return a map of entities linked to a list of expected validation errors that occur when attempting to delete an entity.
+     * Return a map of entities linked to a list of expected validation errors that occur when attempting to update an entity.
      * Each entity must hold a set of properties that causes some validation errors to occur.
      *
      * @return The map of entities linked to a list of expected validation errors
      */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnDelete();
+    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnUpdate();
 
     /**
      * Return a map of objects linked to a list of expected validation errors that occur when attempting to patch an entity.
@@ -257,13 +270,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     protected abstract Map<Object, List<ValidationError>> getExpectedValidationErrorsOnPatch();
 
     /**
-     * Return an object with some getters matching the {@link T} entity getters.
-     * The values returned by the getters must be different than those returned by the
-     * {@link BaseElasticsearchTestCase#newExistingDocument()} getters so that patching tests may occur.
+     * Return a map of entities linked to a list of expected validation errors that occur when attempting to delete an entity.
+     * Each entity must hold a set of properties that causes some validation errors to occur.
      *
-     * @return An object with some getters matching the {@link T} entity getters.
+     * @return The map of entities linked to a list of expected validation errors
      */
-    protected abstract Object newObjectForPatch();
+    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnDelete();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -281,12 +293,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreate()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createInvalidEntity() {
-        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getExpectedValidationErrorsOnCreate().forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
@@ -439,12 +451,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreateOrUpdate()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnUpdate()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateInvalidEntity() {
-        getExpectedValidationErrorsOnCreateOrUpdate().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getExpectedValidationErrorsOnUpdate().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
