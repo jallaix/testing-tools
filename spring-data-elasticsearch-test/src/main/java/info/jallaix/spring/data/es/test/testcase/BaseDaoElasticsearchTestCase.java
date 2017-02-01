@@ -70,13 +70,13 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * Test documents loader
      */
     @Autowired
-    private TestDocumentsLoader testDocumentsLoader;
+    protected TestDocumentsLoader testDocumentsLoader;
 
     /**
      * Test client operations
      */
     @Autowired
-    private TestClientOperations testClientOperations;
+    protected TestClientOperations testClientOperations;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/

@@ -655,7 +655,14 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             httpEntity,
                             getResourceType());
 
-            assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
+            if (expectedError)  // No exception thrown whereas one is expected
+                fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
+
+            else {  // No exception is expected, verify the expected HTTP status code and response body then return the response
+                assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
+
+                return responseEntity;
+            }
         }
 
         // The POST request results in an error response

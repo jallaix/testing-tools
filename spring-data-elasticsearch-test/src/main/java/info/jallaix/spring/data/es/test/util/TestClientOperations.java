@@ -2,6 +2,7 @@ package info.jallaix.spring.data.es.test.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
@@ -63,6 +64,25 @@ public class TestClientOperations {
     }
 
     /**
+     * Find a single a document in the index.
+     *
+     * @param documentClass The document class
+     * @param id The document id
+     * @param <T> The document type
+     * @return The found document
+     */
+    public <T> T findDocument(Class<T> documentClass, String id) {
+
+        DocumentMetaData<T> documentMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(documentClass);
+
+        return fromJson(
+                documentClass,
+                esClient
+                        .prepareGet(documentMetaData.getDocumentAnnotation().indexName(), documentMetaData.getDocumentAnnotation().type(), id)
+                        .get());
+    }
+
+    /**
      * Find all typed documents in the index.
      *
      * @param <T>              The document type
@@ -105,7 +125,7 @@ public class TestClientOperations {
                         .actionGet()
                         .getHits()
                         .spliterator(), false)
-                .map(hit -> fromJson(hit, documentMetaData.getDocumentClass()))
+                .map(hit -> fromJson(documentMetaData.getDocumentClass(), hit))
                 .collect(Collectors.toList());
     }
 
@@ -131,23 +151,39 @@ public class TestClientOperations {
                         .actionGet()
                         .getHits()
                         .spliterator(), false)
-                .map(hit -> fromJson(hit, documentMetaData.getDocumentClass()))
+                .map(hit -> fromJson(documentMetaData.getDocumentClass(), hit))
                 .collect(Collectors.toList());
     }
 
     /**
-     * Convert an Elasticsearch hit to an entity
+     * Convert an Elasticsearch search hit to an entity
      *
      * @param <T>           The document type
-     * @param hit           The search hit
      * @param documentClass The document class
-     * @return The entity
+     * @param hit           The search hit
+     * @return The built entity
      */
-    private <T> T fromJson(SearchHit hit, Class<T> documentClass) {
+    private <T> T fromJson(Class<T> documentClass, SearchHit hit) {
+        return fromJson(documentClass, hit.getSourceAsString(), hit.getId());
+    }
+
+    /**
+     * Convert an Elasticsearch get response to an entity
+     *
+     * @param <T>           The document type
+     * @param documentClass The document class
+     * @param response      The get response
+     * @return The built entity
+     */
+    private <T> T fromJson(Class<T> documentClass, GetResponse response) {
+        return fromJson(documentClass, response.getSourceAsString(), response.getId());
+    }
+
+    private <T> T fromJson(Class<T> documentClass, String jsonSource, String id) {
 
         T entity;
         try {
-            entity = new ObjectMapper().readValue(hit.getSourceAsString(), documentClass);
+            entity = new ObjectMapper().readValue(jsonSource, documentClass);
         } catch (IOException e) {
             logger.error(null, e);
             return null;
@@ -158,9 +194,9 @@ public class TestClientOperations {
                 .findFirst().orElseThrow(() -> new RuntimeException("Missing @Id annotation in document class " + documentClass.getName()));
         try {
             idField.setAccessible(true);
-            idField.set(entity, hit.getId());
+            idField.set(entity, id);
         } catch (IllegalAccessException e) {
-            throw new RuntimeException("Impossible to affect value '" + hit.getId() + "' to " + documentClass.getName() + "." + idField.getName());
+            throw new RuntimeException("Impossible to affect value '" + id + "' to " + documentClass.getName() + "." + idField.getName());
         }
 
         return entity;
