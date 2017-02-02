@@ -18,8 +18,13 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -34,8 +39,16 @@ public class SpringDataEsTestConfiguration {
      * @return The Elasticsearch client
      */
     @Bean
-    public Client elasticsearchClient() {
+    public Client elasticsearchClient() throws IOException {
 
+        // Clean the testing Elasticsearch index (may be inconsistent)
+        Path rootPath = Paths.get("target/test-data");
+        Files.walk(rootPath)
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+
+        // Configure the testing Elasticsearch index
         NodeBuilder nodeBuilder = NodeBuilder.nodeBuilder();
         nodeBuilder.settings().put("path.data", "target/test-data");
         nodeBuilder.local(true);
@@ -49,7 +62,7 @@ public class SpringDataEsTestConfiguration {
      * @return The Elastic search operations template
      */
     @Bean
-    public ElasticsearchOperations elasticsearchTemplate() {
+    public ElasticsearchOperations elasticsearchTemplate() throws IOException {
         return new ElasticsearchTemplate(elasticsearchClient());
     }
 
@@ -59,7 +72,7 @@ public class SpringDataEsTestConfiguration {
      * @return The test documents loader
      */
     @Bean
-    public TestDocumentsLoader testDocumentsLoader() {
+    public TestDocumentsLoader testDocumentsLoader() throws IOException {
         return new TestDocumentsLoader(elasticsearchClient());
     }
 
@@ -69,7 +82,7 @@ public class SpringDataEsTestConfiguration {
      * @return The test client operations
      */
     @Bean
-    public TestClientOperations testClientOperations() {
+    public TestClientOperations testClientOperations() throws IOException {
         return new TestClientOperations(elasticsearchClient());
     }
 
