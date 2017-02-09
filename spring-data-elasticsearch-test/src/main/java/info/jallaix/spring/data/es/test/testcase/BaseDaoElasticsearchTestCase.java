@@ -19,49 +19,49 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.*;
 
 /**
- * <p>
+ * <p/>
  * Test class for the Spring Data Elasticsearch module.<br>
  * It supports data initialization thanks to the <a href="https://github.com/tlrx/elasticsearch-test">elasticsearch-test framework</a>.<br>
  * It also performs generic CRUD tests on the tested repository.<br>
- *
- * <p>
+ * <p/>
+ * <p/>
  * The repository must verify the following tests related to document <b>indexing</b> or <b>saving</b> (same behavior) :
  * <ul>
- *     <li>Indexing a null document throws an IllegalArgumentException.</li>
- *     <li>Saving a null document throws an IllegalArgumentException.</li>
- *     <li>Saving a list of documents with one null throws an IllegalArgumentException and no document is indexed.</li>
- *     <li>Indexing a new document inserts the document in the index.</li>
- *     <li>Saving a new document inserts the document in the index.</li>
- *     <li>Saving a list of new documents inserts the documents in the index.</li>
- *     <li>Indexing an existing document replaces the document in the index.</li>
- *     <li>Saving an existing document replaces the document in the index.</li>
- *     <li>Saving a list of existing documents replaces the documents in the index.</li>
+ * <li>Indexing a null document throws an IllegalArgumentException.</li>
+ * <li>Saving a null document throws an IllegalArgumentException.</li>
+ * <li>Indexing a new document inserts the document in the index.</li>
+ * <li>Saving a new document inserts the document in the index.</li>
+ * <li>Indexing an existing document replaces the document in the index.</li>
+ * <li>Saving an existing document replaces the document in the index.</li>
+ * <li>Saving a list of documents with one null throws an IllegalArgumentException and no document is indexed.</li>
+ * <li>Saving a list of documents inserts and updates the documents in the index.</li>
  * </ul>
- * <p>
+ * <p/>
  * The repository must verify the following tests related to document <b>finding</b> :
  * <ul>
- *     <li>Finding a list of all existing documents returns an iterable with all these documents.</li>
- *     <li>Finding a list of existing documents by identifier returns an iterable with all these documents.</li>
- *     <li>Finding a page of sorted existing documents returns an iterable with all these sorted documents.</li>
- *     <li>Finding a page of existing documents returns an iterable with all these documents.</li>
- *     <li>Finding a document with a null identifier throws an ActionRequestValidationException.</li>
- *     <li>Finding a document that doesn't exist returns a null document.</li>
- *     <li>Finding a document that exists returns this document.</li>
- *     <li>Testing the existence of a document with a null identifier throws an ActionRequestValidationException.</li>
- *     <li>Testing the existence of a document that doesn't exist returns false.</li>
- *     <li>Testing the existence of a document that exists returns true.</li>
- *     <li>Counting the number of documents returns the number of documents in the index type</li>
+ * <li>Finding a list of all existing documents returns an iterable with all these documents.</li>
+ * <li>Finding a list of existing documents by identifier returns an iterable with all these documents.</li>
+ * <li>Finding a sorted list of all existing documents returns an iterable with all these documents sorted.</li>
+ * <li>Finding a page of existing documents returns an iterable with all these documents for a page.</li>
+ * <li>Finding a sorted page of existing documents returns an iterable with all these documents sorted for a page.</li>
+ * <li>Finding a document with a null identifier throws an ActionRequestValidationException.</li>
+ * <li>Finding a document that doesn't exist returns a null document.</li>
+ * <li>Finding a document that exists returns this document.</li>
+ * <li>Testing the existence of a document with a null identifier throws an ActionRequestValidationException.</li>
+ * <li>Testing the existence of a document that doesn't exist returns false.</li>
+ * <li>Testing the existence of a document that exists returns true.</li>
+ * <li>Counting the number of documents returns the number of documents in the index type</li>
  * </ul>
- * <p>
+ * <p/>
  * The repository must verify the following tests related to document <b>deleting</b> :
  * <ul>
- *     <li>Deleting all documents leaves an empty index type.</li>
- *     <li>Deleting a missing document set doesn't remove these documents from the index type.</li>
- *     <li>Deleting an existing document set removes these documents from the index type.</li>
- *     <li>Deleting a missing document set doesn't remove this document from the index type.</li>
- *     <li>Deleting an existing document set removes this document from the index type.</li>
- *     <li>Deleting a missing document by identifier set doesn't remove this document from the index type.</li>
- *     <li>Deleting an existing document by identifier set removes this document from the index type.</li>
+ * <li>Deleting all documents leaves an empty index type.</li>
+ * <li>Deleting a missing document set doesn't remove these documents from the index type.</li>
+ * <li>Deleting an existing document set removes these documents from the index type.</li>
+ * <li>Deleting a missing document set doesn't remove this document from the index type.</li>
+ * <li>Deleting an existing document set removes this document from the index type.</li>
+ * <li>Deleting a missing document by identifier set doesn't remove this document from the index type.</li>
+ * <li>Deleting an existing document by identifier set removes this document from the index type.</li>
  * </ul>
  */
 public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R extends ElasticsearchRepository<T, ID>> extends BaseElasticsearchTestCase<T, ID, R> {
@@ -85,6 +85,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
     /**
      * Constructor with list of methods to test
+     *
      * @param methods Methods to test
      */
     @SafeVarargs
@@ -93,20 +94,20 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         if (methods.length == 0)
             testedMethods = new HashSet<>(Arrays.asList(
                     DaoTestedMethod.Index.class,
-                            DaoTestedMethod.Index.class,
-                            DaoTestedMethod.Save.class,
-                            DaoTestedMethod.SaveBulk.class,
-                            DaoTestedMethod.FindAll.class,
-                            DaoTestedMethod.FindAllById.class,
-                            DaoTestedMethod.FindAllPageable.class,
-                            DaoTestedMethod.FindAllSorted.class,
-                            DaoTestedMethod.FindOne.class,
-                            DaoTestedMethod.Exist.class,
-                            DaoTestedMethod.Count.class,
-                            DaoTestedMethod.DeleteAll.class,
-                            DaoTestedMethod.DeleteAllById.class,
-                            DaoTestedMethod.Delete.class,
-                            DaoTestedMethod.DeleteById.class));
+                    DaoTestedMethod.Index.class,
+                    DaoTestedMethod.Save.class,
+                    DaoTestedMethod.SaveBulk.class,
+                    DaoTestedMethod.FindAll.class,
+                    DaoTestedMethod.FindAllById.class,
+                    DaoTestedMethod.FindAllPageable.class,
+                    DaoTestedMethod.FindAllSorted.class,
+                    DaoTestedMethod.FindOne.class,
+                    DaoTestedMethod.Exist.class,
+                    DaoTestedMethod.Count.class,
+                    DaoTestedMethod.DeleteAll.class,
+                    DaoTestedMethod.DeleteAllById.class,
+                    DaoTestedMethod.Delete.class,
+                    DaoTestedMethod.DeleteById.class));
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
     }
@@ -120,7 +121,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * Indexing a null document throws an IllegalArgumentException.
      */
     @Category(DaoTestedMethod.Index.class)
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void indexNullDocument() {
 
         getRepository().index(null);
@@ -130,32 +131,10 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * Saving a null document throws an IllegalArgumentException.
      */
     @Category(DaoTestedMethod.Save.class)
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void saveNullDocument() {
 
-        getRepository().save((T)null);
-    }
-
-    /**
-     * Indexing a list of documents with one null throws an IllegalArgumentException and no document is indexed.
-     */
-    @Category(DaoTestedMethod.SaveBulk.class)
-    @Test
-    public void saveNullDocuments() {
-
-        List<T> documents = new ArrayList<>(1);
-        documents.add(newDocumentToInsert());
-        documents.add(null);
-
-        try {
-            getRepository().save(documents);
-            fail("IllegalArgumentException must be thrown");
-        }
-        catch (IllegalArgumentException e) {
-            assertEquals(
-                    testDocumentsLoader.getLoadedDocumentCount(),
-                    testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
-        }
+        getRepository().save((T) null);
     }
 
     /**
@@ -191,25 +170,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     }
 
     /**
-     * Saving a list of new documents inserts the documents in the index.
-     */
-    @Category(DaoTestedMethod.Save.class)
-    @Test
-    public void saveNewDocuments() {
-
-        List<T> toInsert = new ArrayList<>(1);
-        toInsert.add(newDocumentToInsert());
-        List<T> inserted = new ArrayList<>(1);
-        getRepository().save(toInsert)
-                .forEach(inserted::add);
-
-        assertEquals(
-                testDocumentsLoader.getLoadedDocumentCount() + 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
-        assertArrayEquals(toInsert.toArray(), inserted.toArray());
-    }
-
-    /**
      * Indexing an existing document replaces the document in the index.
      */
     @Category(DaoTestedMethod.Index.class)
@@ -242,22 +202,37 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     }
 
     /**
-     * Saving a list of existing documents replaces the documents in the index.
+     * Indexing a list of documents with one null throws an IllegalArgumentException and no document is indexed.
      */
     @Category(DaoTestedMethod.SaveBulk.class)
     @Test
-    public void saveExistingDocuments() {
+    public void saveNullDocuments() {
 
-        List<T> toUpdate = new ArrayList<>(1);
-        toUpdate.add(newDocumentToUpdate());
-        List<T> updated = new ArrayList<>(1);
-        getRepository().save(toUpdate)
-                .forEach(updated::add);
+        try {
+            getRepository().save(Arrays.asList(newDocumentToInsert(), newDocumentToUpdate(), null));
+            fail("IllegalArgumentException must be thrown");
+        } catch (IllegalArgumentException e) {
+            assertEquals(
+                    testDocumentsLoader.getLoadedDocumentCount(),
+                    testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+        }
+    }
+
+    /**
+     * Saving a list of documents inserts and updates the documents in the index.
+     */
+    @Category(DaoTestedMethod.Save.class)
+    @Test
+    public void saveDocuments() {
+
+        List<T> toSave = Arrays.asList(newDocumentToInsert(), newDocumentToUpdate());
+        List<T> saved = new ArrayList<>(2);
+        getRepository().save(toSave).forEach(saved::add);
 
         assertEquals(
-                testDocumentsLoader.getLoadedDocumentCount(),
+                testDocumentsLoader.getLoadedDocumentCount() + 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
-        assertArrayEquals(toUpdate.toArray(), updated.toArray());
+        assertArrayEquals(toSave.toArray(), saved.toArray());
     }
 
 
@@ -273,7 +248,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocuments() {
 
         // Fixture
-        List<T> initialList = testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), 0, (int)this.getTestDocumentsLoader().getLoadedDocumentCount());
+        List<T> initialList = testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), 0, (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
 
         // Repository search
         List<T> foundList = new ArrayList<>();
@@ -305,7 +280,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     }
 
     /**
-     * Finding a page of existing documents returns an iterable with all these documents.
+     * Finding a sorted list of all existing documents returns an iterable with all these documents sorted.
      */
     @Category(DaoTestedMethod.FindAllSorted.class)
     @Test
@@ -316,7 +291,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 getDocumentMetaData(),
                 getSortField(),
                 0,
-                (int)this.getTestDocumentsLoader().getLoadedDocumentCount());
+                (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
 
         // Repository search
         Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
@@ -328,7 +303,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     }
 
     /**
-     * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
+     * Finding a page of existing documents returns an iterable with all these documents for a page.
      */
     @Category(DaoTestedMethod.FindAllPageable.class)
     @Test
@@ -369,7 +344,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     }
 
     /**
-     * Finding a page of sorted existing documents returns an iterable with all these sorted documents.
+     * Finding a sorted page of existing documents returns an iterable with all these documents sorted for a page.
      */
     @Category(DaoTestedMethod.FindAllPageable.class)
     @Test
@@ -417,7 +392,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * Finding a document with a null identifier throws an ActionRequestValidationException.
      */
     @Category(DaoTestedMethod.FindOne.class)
-    @Test(expected=ActionRequestValidationException.class)
+    @Test(expected = ActionRequestValidationException.class)
     public void findOneNullDocument() {
 
         getRepository().findOne(null);
@@ -456,7 +431,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * Testing the existence of a document with a null identifier throws an ActionRequestValidationException.
      */
     @Category(DaoTestedMethod.Exist.class)
-    @Test(expected=ActionRequestValidationException.class)
+    @Test(expected = ActionRequestValidationException.class)
     public void existOneNullDocument() {
 
         getRepository().exists(null);
@@ -502,7 +477,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                     Tests related to document deleting                                         */
+    /*                                     Tests related to document deletion                                         */
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
