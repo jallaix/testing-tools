@@ -248,7 +248,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocuments() {
 
         // Fixture
-        List<T> initialList = testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), 0, (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
+        List<T> initialList = getFixtureForFindAll();
 
         // Repository search
         List<T> foundList = new ArrayList<>();
@@ -266,7 +266,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByIdentifier() {
 
         // Fixture
-        List<T> initialList = testClientOperations.findAllDocuments(getDocumentMetaData());
+        List<T> initialList = getFixtureForFindAllByIdentifier();
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
@@ -287,11 +287,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsSorted() {
 
         // Fixture
-        List<T> initialList = testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
-                getSortField(),
-                0,
-                (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
+        List<T> initialList = getFixtureForFindAllSorted();
 
         // Repository search
         Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
@@ -317,10 +313,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Fixture for first page
-        List<T> initialList = testClientOperations.findAllDocumentsPaged(
-                getDocumentMetaData(),
-                0,
-                pageSize);
+        List<T> initialList = getFixtureForFindAllByPageForFirstPage();
 
         // Repository search
         List<T> foundList = new ArrayList<>();
@@ -330,10 +323,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Fixture for last page
-        initialList = testClientOperations.findAllDocumentsPaged(
-                getDocumentMetaData(),
-                nbPages - 1,
-                pageSize);
+        initialList = getFixtureForFindAllByPageForLastPage();
 
         // Repository search
         foundList.clear();
@@ -359,11 +349,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         Field sortField = getSortField();
 
         // Fixture for first page
-        List<T> initialList = testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
-                sortField,
-                0,
-                pageSize);
+        List<T> initialList = getFixtureForFindAllByPageSortedForFirstPage();
 
         // Repository search
         Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
@@ -374,11 +360,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Fixture for last page
-        initialList = testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
-                sortField,
-                nbPages - 1,
-                pageSize);
+        initialList = getFixtureForFindAllByPageSortedForLastPage();
 
         // Repository search
         foundList.clear();
@@ -574,5 +556,104 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                        Fixtures for findAll methods                                            */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Get all typed documents from the index.
+     *
+     * @return All typed documents from the index
+     */
+    protected List<T> getFixtureForFindAll() {
+        return testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), 0, (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
+    }
+
+    /**
+     * Get some typed documents from the index depending of the default page size.
+     *
+     * @return Some typed documents from the index depending of the default page size
+     */
+    protected List<T> getFixtureForFindAllByIdentifier() {
+        return testClientOperations.findAllDocuments(getDocumentMetaData());
+    }
+
+    /**
+     * Get all typed documents sorted from the index.
+     *
+     * @return All typed documents sorted from the index
+     */
+    protected List<T> getFixtureForFindAllSorted() {
+
+        return testClientOperations.findAllDocumentsPagedSorted(
+                getDocumentMetaData(),
+                getSortField(),
+                0,
+                (int) this.getTestDocumentsLoader().getLoadedDocumentCount());
+    }
+
+    /**
+     * Get typed documents from the index for the first page
+     *
+     * @return Typed documents from the index for the first page
+     */
+    protected List<T> getFixtureForFindAllByPageForFirstPage() {
+
+        return testClientOperations.findAllDocumentsPaged(
+                getDocumentMetaData(),
+                0,
+                getPageSize());
+    }
+
+    /**
+     * Get typed documents from the index for the last page
+     *
+     * @return Typed documents from the index for the last page
+     */
+    protected List<T> getFixtureForFindAllByPageForLastPage() {
+
+        long documentsCount = testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation());
+        int pageSize = getPageSize();
+        int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+
+        return testClientOperations.findAllDocumentsPaged(
+                getDocumentMetaData(),
+                nbPages - 1,
+                getPageSize());
+    }
+
+    /**
+     * Get typed documents sorted from the index for the first page
+     *
+     * @return Typed documents sorted from the index for the first page
+     */
+    protected List<T> getFixtureForFindAllByPageSortedForFirstPage() {
+
+        return testClientOperations.findAllDocumentsPagedSorted(
+                getDocumentMetaData(),
+                getSortField(),
+                0,
+                getPageSize());
+    }
+
+    /**
+     * Get typed documents sorted from the index for the last page
+     *
+     * @return Typed documents sorted from the index for the last page
+     */
+    protected List<T> getFixtureForFindAllByPageSortedForLastPage() {
+
+        long documentsCount = testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation());
+        int pageSize = getPageSize();
+        int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
+
+        return testClientOperations.findAllDocumentsPagedSorted(
+                getDocumentMetaData(),
+                getSortField(),
+                nbPages - 1,
+                pageSize);
     }
 }
