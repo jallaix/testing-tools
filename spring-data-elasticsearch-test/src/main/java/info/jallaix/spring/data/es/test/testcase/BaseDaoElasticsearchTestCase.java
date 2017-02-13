@@ -150,6 +150,9 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
         assertEquals(toInsert, inserted);
+
+        // Customizable test function
+        customizeSaveNewDocument(toInsert, inserted);
     }
 
     /**
@@ -166,6 +169,9 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
         assertEquals(toInsert, inserted);
+
+        // Customizable test function
+        customizeSaveNewDocument(toInsert, inserted);
     }
 
     /**
@@ -176,12 +182,19 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void indexExistingDocument() {
 
         T toUpdate = newDocumentToUpdate();
+
+        // Get custom data before saving to make it available to customizeSaveExistingDocument()
+        Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
+
         T updated = getRepository().index(toUpdate);
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
         assertEquals(toUpdate, updated);
+
+        // Customizable test function
+        customizeSaveExistingDocument(toUpdate, updated, customData);
     }
 
     /**
@@ -192,12 +205,19 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void saveExistingDocument() {
 
         T toUpdate = newDocumentToUpdate();
+
+        // Get custom data before saving to make it available to customizeSaveExistingDocument()
+        Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
+
         T updated = getRepository().save(toUpdate);
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
         assertEquals(toUpdate, updated);
+
+        // Customizable test function
+        customizeSaveExistingDocument(toUpdate, updated, customData);
     }
 
     /**
@@ -225,6 +245,10 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void saveDocuments() {
 
         List<T> toSave = Arrays.asList(newDocumentToInsert(), newDocumentToUpdate());
+
+        // Get custom data before saving to make it available to customizeSaveDocuments()
+        Object customData = getCustomDataOnSaveDocuments(toSave);
+
         List<T> saved = new ArrayList<>(2);
         getRepository().save(toSave).forEach(saved::add);
 
@@ -232,6 +256,9 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
         assertArrayEquals(toSave.toArray(), saved.toArray());
+
+        // Customizable test function
+        customizeSaveDocuments(toSave, saved, customData);
     }
 
 
@@ -579,11 +606,60 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                              Fixture customization                                             */
+    /*                                                Tests customization                                             */
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Customize a list of typed documents.
+     * Add additional content to the {@link #saveNewDocument()} and {@link #indexNewDocument()} tests.
+     *
+     * @param toInsert Document to insert
+     * @param inserted Inserted document
+     */
+    protected void customizeSaveNewDocument(T toInsert, T inserted) {
+    }
+
+    /**
+     * Get custom data before saving to make it available to the {@link #customizeSaveExistingDocument(Object, Object, Object)} method
+     *
+     * @param toUpdate Document to update
+     * @return The custom data
+     */
+    protected Object getCustomDataOnSaveExistingDocument(T toUpdate) {
+        return null;
+    }
+
+    /**
+     * Add additional content to the {@link #saveExistingDocument()} and {@link #indexExistingDocument()} tests.
+     *
+     * @param toUpdate   Document to update
+     * @param updated    Updated document
+     * @param customData Custom data
+     */
+    protected void customizeSaveExistingDocument(T toUpdate, T updated, Object customData) {
+    }
+
+    /**
+     * Get custom data before saving to make it available to the {@link #customizeSaveDocuments(List, List, Object)} method
+     *
+     * @param toSave Documents to save
+     * @return The custom data
+     */
+    protected Object getCustomDataOnSaveDocuments(List<T> toSave) {
+        return null;
+    }
+
+    /**
+     * Add additional content to the {@link #saveDocuments()} test.
+     *
+     * @param toSave Documents to save
+     * @param saved  Saved documents
+     */
+    protected void customizeSaveDocuments(List<T> toSave, List<T> saved, Object customData) {
+    }
+
+    /**
+     * Customize a list of typed documents used as fixture in the {@link #findAllDocuments()} and so on tests.
+     *
      * @param fixture The list of typed documents to customize
      * @return The list of customized typed documents
      */
