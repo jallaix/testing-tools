@@ -274,7 +274,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocuments() {
 
         // Get all typed documents from the index
-        List<T> initialList = customizeFixture(testClientOperations.findAllDocumentsPaged(
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetaData(),
                 0,
                 (int) this.getTestDocumentsLoader().getLoadedDocumentCount()));
@@ -295,7 +295,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByIdentifier() {
 
         // Get some typed documents from the index depending of the default page size
-        List<T> initialList = customizeFixture(testClientOperations.findAllDocuments(getDocumentMetaData()));
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocuments(getDocumentMetaData()));
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
@@ -316,7 +316,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsSorted() {
 
         // Get all typed documents sorted from the index
-        List<T> initialList = customizeFixture(testClientOperations.findAllDocumentsPagedSorted(
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetaData(),
                 getSortField(),
                 0,
@@ -346,7 +346,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Get typed documents from the index for the first page
-        List<T> initialList = customizeFixture(testClientOperations.findAllDocumentsPaged(
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetaData(),
                 0,
                 getPageSize()));
@@ -359,7 +359,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Get typed documents from the index for the last page
-        initialList = customizeFixture(testClientOperations.findAllDocumentsPaged(
+        initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetaData(),
                 nbPages - 1,
                 getPageSize()));
@@ -387,7 +387,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Fixture for first page
-        List<T> initialList = customizeFixture(testClientOperations.findAllDocumentsPagedSorted(
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetaData(),
                 getSortField(),
                 0,
@@ -402,7 +402,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Fixture for last page
-        initialList = customizeFixture(testClientOperations.findAllDocumentsPagedSorted(
+        initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetaData(),
                 getSortField(),
                 nbPages - 1,
@@ -448,12 +448,13 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findOneExistingDocument() {
 
-        T document = newExistingDocument();
+        T document = customizeFindOneFixture(newExistingDocument());
         T found = getRepository().findOne(getIdFieldValue(document));
 
         assertNotNull(found);
         assertEquals(document, found);
     }
+
 
     /**
      * Testing the existence of a document with a null identifier throws an ActionRequestValidationException.
@@ -569,11 +570,16 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneExistingDocument() {
 
-        getRepository().delete(newDocumentToUpdate());
+        T documentToUpdate = newDocumentToUpdate();
+        ID id = getIdFieldValue(documentToUpdate);
+        getRepository().delete(documentToUpdate);
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+
+        // Customizable test function
+        customizeDeleteOne(id);
     }
 
     /**
@@ -597,11 +603,15 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneExistingDocumentById() {
 
-        getRepository().delete(getIdFieldValue(newDocumentToUpdate()));
+        ID id = getIdFieldValue(newDocumentToUpdate());
+        getRepository().delete(id);
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+
+        // Customizable test function
+        customizeDeleteOne(id);
     }
 
 
@@ -663,7 +673,25 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      * @param fixture The list of typed documents to customize
      * @return The list of customized typed documents
      */
-    protected List<T> customizeFixture(final List<T> fixture) {
+    protected List<T> customizeFindAllFixture(final List<T> fixture) {
         return fixture;
+    }
+
+    /**
+     * Customize a typed document used as fixture in the {@link #findOneExistingDocument()} test.
+     *
+     * @param fixture The typed document to customize
+     * @return The customized typed document
+     */
+    protected T customizeFindOneFixture(final T fixture) {
+        return fixture;
+    }
+
+    /**
+     * Add additional content to the {@link #deleteOneExistingDocument()} and {@link #deleteOneExistingDocumentById()} tests.
+     *
+     * @param id  Identifier of the deleted document
+     */
+    protected void customizeDeleteOne(ID id) {
     }
 }

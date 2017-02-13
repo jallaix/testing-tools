@@ -43,10 +43,11 @@ public class SpringDataEsTestConfiguration {
 
         // Clean the testing Elasticsearch index (may be inconsistent)
         Path rootPath = Paths.get("target/test-data");
-        Files.walk(rootPath)
-                .sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(File::delete);
+        if (rootPath.toFile().exists())
+            Files.walk(rootPath)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
 
         // Configure the testing Elasticsearch index
         NodeBuilder nodeBuilder = NodeBuilder.nodeBuilder();
