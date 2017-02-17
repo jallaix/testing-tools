@@ -519,6 +519,9 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         getRepository().deleteAll();
 
         assertEquals(0, testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+
+        // Customizable test function
+        customizeDeleteAll();
     }
 
     /**
@@ -542,11 +545,15 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteExistingDocumentSet() {
 
-        getRepository().delete(Collections.singletonList(newDocumentToUpdate()));
+        List<T> documentsToDelete = Collections.singletonList(newDocumentToUpdate());
+        getRepository().delete(documentsToDelete);
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
                 testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+
+        // Customizable test function
+        customizeDeleteSet(documentsToDelete);
     }
 
     /**
@@ -690,8 +697,22 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     /**
      * Add additional content to the {@link #deleteOneExistingDocument()} and {@link #deleteOneExistingDocumentById()} tests.
      *
-     * @param id  Identifier of the deleted document
+     * @param id Identifier of the deleted document
      */
     protected void customizeDeleteOne(ID id) {
+    }
+
+    /**
+     * Add additional content to the {@link #deleteAllDocuments()} test.
+     */
+    protected void customizeDeleteAll() {
+    }
+
+    /**
+     * Add additional content to the {@link #deleteExistingDocumentSet()} test.
+     *
+     * @param toDelete List of documents to delete
+     */
+    protected void customizeDeleteSet(List<T> toDelete) {
     }
 }
