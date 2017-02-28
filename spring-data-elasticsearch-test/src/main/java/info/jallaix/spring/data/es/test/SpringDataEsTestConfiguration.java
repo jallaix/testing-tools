@@ -51,6 +51,7 @@ public class SpringDataEsTestConfiguration {
 
         // Configure the testing Elasticsearch index
         NodeBuilder nodeBuilder = NodeBuilder.nodeBuilder();
+        nodeBuilder.settings().put("path.home", "target");
         nodeBuilder.settings().put("path.data", "target/test-data");
         nodeBuilder.local(true);
 
