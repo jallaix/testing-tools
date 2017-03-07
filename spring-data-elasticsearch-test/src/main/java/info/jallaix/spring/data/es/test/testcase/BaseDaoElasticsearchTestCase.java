@@ -545,7 +545,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteExistingDocumentSet() {
 
-        List<T> documentsToDelete = Collections.singletonList(newDocumentToUpdate());
+        List<T> documentsToDelete = Collections.singletonList(newExistingDocument());
         getRepository().delete(documentsToDelete);
 
         assertEquals(
