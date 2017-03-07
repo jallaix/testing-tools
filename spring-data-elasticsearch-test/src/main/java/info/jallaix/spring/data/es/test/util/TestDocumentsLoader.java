@@ -1,16 +1,18 @@
 package info.jallaix.spring.data.es.test.util;
 
-import com.github.tlrx.elasticsearch.test.EsSetup;
-import com.github.tlrx.elasticsearch.test.EsSetupRuntimeException;
-import com.github.tlrx.elasticsearch.test.provider.JSONProvider;
-import com.github.tlrx.elasticsearch.test.request.CreateIndex;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.elasticsearch.client.Client;
+import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.query.IndexQuery;
+import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.SearchQuery;
 
-import static com.github.tlrx.elasticsearch.test.EsSetup.deleteAll;
-import static com.github.tlrx.elasticsearch.test.EsSetup.fromClassPath;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * This class is used to load documents in an Elasticsearch index.
@@ -19,22 +21,9 @@ import static com.github.tlrx.elasticsearch.test.EsSetup.fromClassPath;
 public class TestDocumentsLoader {
 
     /**
-     * File extension for document mapping
+     * Elasticsearch operations
      */
-    protected static final String DOCUMENT_MAPPING_EXTENSION = ".mapping.json";
-    /**
-     * File extension for document data
-     */
-    protected static final String DOCUMENT_DATA_EXTENSION = ".data.bulk";
-
-    /**
-     * Elasticsearch client
-     */
-    private Client esClient;
-    /**
-     * Elasticsearch setup for index initialization
-     */
-    private EsSetup esSetup;
+    private ElasticsearchOperations esOperations;
 
     /**
      * Number of documents loaded in the index
@@ -52,42 +41,70 @@ public class TestDocumentsLoader {
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Constructor with Elasticsearch client
-     * @param esClient the Elasticsearch client
+     * Constructor with Elasticsearch operations.
+     *
+     * @param esOperations The Elasticsearch operations
      */
-    public TestDocumentsLoader(Client esClient) { this.esClient = esClient; }
+    public TestDocumentsLoader(ElasticsearchOperations esOperations) {
+        this.esOperations = esOperations;
+    }
 
     /**
      * Create an Elasticsearch index with sample documents
-     * @param indexName Index name
-     * @param documentType Document type
-     * @param testedClassName Tested class name
+     *
+     * @param documentMetaData Elastic document metadata
+     * @param entityClasses    Set of entity classes used for mapping
+     * @param documentsToStore Tested class name
      */
-    public void initElasticIndex(String indexName, String documentType, String testedClassName) {
+    public void initElasticIndex(DocumentMetaData<?> documentMetaData, Set<Class<?>> entityClasses, List<?> documentsToStore) {
 
-        CreateIndex index = initIndexWithMapping(                                   // Apply mapping to document type
-                indexName,
-                documentType,
-                testedClassName);
-        esSetup = setupIndexWithData(index, testedClassName);                      // Load documents in the index
-        if (esSetup != null)
-            loadedDocumentCount = countLoadedDocuments(indexName, documentType);    // Number of loaded documents
+        for (Class<?> entityClass : entityClasses) {
+
+            // Clean the index data
+            if (esOperations.indexExists(entityClass))
+                esOperations.deleteIndex(entityClass);
+
+            // Apply mapping for the document type
+            esOperations.putMapping(entityClass);
+        }
+
+        List<IndexQuery> indexQueries = new ArrayList<IndexQuery>();
+        for (Object documentToStore : documentsToStore) {
+            DocumentMetaData<?> documentToStoreMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(documentToStore.getClass());
+            IndexQueryBuilder indexQueryBuilder = new IndexQueryBuilder();
+            try {
+                indexQueryBuilder.withId(String.class.cast(documentToStoreMetaData.getDocumentIdField().get(documentToStore)));
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            indexQueryBuilder.withObject(documentsToStore);
+
+            indexQueries.add(indexQueryBuilder.build());
+        }
+        esOperations.bulkIndex(indexQueries);
+
+        // Number of loaded documents
+        loadedDocumentCount = countLoadedDocuments(
+                documentMetaData.getDocumentAnnotation().indexName(),
+                documentMetaData.getDocumentAnnotation().type());
     }
 
     /**
      * Free resources used by Elasticsearch
      */
     public void terminateElasticIndex() {
-
-        if (esSetup != null)
-            esSetup.terminate();
+        /*if (esSetup != null)
+            esSetup.terminate();*/
     }
 
     /**
      * Get the number of loaded documents
+     *
      * @return The number of loaded documents
      */
-    public long getLoadedDocumentCount() { return loadedDocumentCount; }
+    public long getLoadedDocumentCount() {
+        return loadedDocumentCount;
+    }
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -95,61 +112,15 @@ public class TestDocumentsLoader {
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Create an Elasticsearch index with a document type
-     * @param indexName Index name
-     * @param documentType Document testedClassName
-     * @param testedClassName Tested class name
-     * @return Index creation data
-     */
-    private CreateIndex initIndexWithMapping(String indexName, String documentType, String testedClassName) {
-
-        CreateIndex createIndex = EsSetup.createIndex(indexName);
-
-        // Add mapping to the Elastic documentType
-        JSONProvider mappingClassPath = fromClassPath(testedClassName.replace(".", "/") + DOCUMENT_MAPPING_EXTENSION);
-        try {
-            createIndex.withMapping(documentType, mappingClassPath);
-        }
-        catch (EsSetupRuntimeException e) {
-            //noinspection ThrowableResultOfMethodCallIgnored
-            logger.warn(ExceptionUtils.getRootCause(e).getMessage());
-        }
-
-        return createIndex;
-    }
-
-    /**
-     * Load data in an Elasticsearch index before a test executes
-     * @param createIndex Index creation data
-     * @param testedClassName Tested class name
-     * @return An Elasticsearch setup
-     */
-    private EsSetup setupIndexWithData(CreateIndex createIndex, String testedClassName) {
-
-        // Add data to the Elasticsearch index
-        JSONProvider dataClassPath = fromClassPath(testedClassName.replace(".", "/") + DOCUMENT_DATA_EXTENSION);
-        createIndex.withData(dataClassPath);
-
-        // Setup Elasticsearch index initialization
-        EsSetup esSetup = new EsSetup(esClient, false);
-        try {
-            esSetup.execute(deleteAll(), createIndex);
-        }
-        catch (EsSetupRuntimeException e) {
-            //noinspection ThrowableResultOfMethodCallIgnored
-            logger.warn(ExceptionUtils.getRootCause(e).getMessage());
-            esSetup = null;
-        }
-
-        return esSetup;
-    }
-
-    /**
      * Count the number of documents loaded in the index
-     * @param indexName Index name
+     *
+     * @param indexName    Index name
      * @param documentType Document type
      */
     private long countLoadedDocuments(String indexName, String documentType) {
-        return esClient.prepareCount(indexName).setTypes(documentType).get().getCount();
+        SearchQuery query = new NativeSearchQuery(QueryBuilders.matchAllQuery());
+        query.addIndices(indexName);
+        query.addTypes(documentType);
+        return esOperations.count(query);
     }
 }

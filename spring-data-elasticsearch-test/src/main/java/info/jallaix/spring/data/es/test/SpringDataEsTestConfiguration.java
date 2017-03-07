@@ -75,7 +75,7 @@ public class SpringDataEsTestConfiguration {
      */
     @Bean
     public TestDocumentsLoader testDocumentsLoader() throws IOException {
-        return new TestDocumentsLoader(elasticsearchClient());
+        return new TestDocumentsLoader(elasticsearchTemplate());
     }
 
     /**

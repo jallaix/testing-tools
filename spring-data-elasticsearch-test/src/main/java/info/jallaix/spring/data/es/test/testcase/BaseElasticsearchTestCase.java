@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -55,10 +56,15 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     private TestDocumentsLoader testDocumentsLoader;
 
     /**
-     * Elastic document metadata
+     * Elasticsearch document metadata
      */
     @Getter(AccessLevel.PROTECTED)
     private DocumentMetaData<T> documentMetaData;
+
+    /**
+     * Set of entity classes used for mapping
+     */
+    private Set<Class<?>> entityClasses;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -116,6 +122,12 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
      */
     protected abstract int getPageSize();
 
+    /**
+     * Return the list of document to store in the index before each test
+     * @return The list of document to store in the index
+     */
+    protected abstract List<T> getStoredDocuments();
+
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                                Data loading                                                    */
@@ -131,9 +143,9 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
         // Load documents into index
         testDocumentsLoader.initElasticIndex(
-                documentMetaData.getDocumentAnnotation().indexName(),
-                documentMetaData.getDocumentAnnotation().type(),
-                this.getClass().getName());
+                documentMetaData,
+                entityClasses,
+                getStoredDocuments());
     }
 
     /**
@@ -151,6 +163,16 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     @SuppressWarnings("unused")
     protected TestDocumentsLoader getTestDocumentsLoader() {
         return testDocumentsLoader;
+    }
+
+    /**
+     * Set entity classes for Elasticsearch mapping.
+     *
+     * @param entityClasses Entity classes that contain Elasticsearch mapping data
+     */
+    @SuppressWarnings("unused")
+    protected void setEntityMappings(Set<Class<?>> entityClasses) {
+        this.entityClasses = entityClasses;
     }
 
 
