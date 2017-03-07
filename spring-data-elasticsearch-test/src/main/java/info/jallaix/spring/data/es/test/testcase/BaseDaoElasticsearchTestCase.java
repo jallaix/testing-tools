@@ -148,7 +148,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
         assertEquals(toInsert, inserted);
 
         // Customizable test function
@@ -167,7 +167,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
         assertEquals(toInsert, inserted);
 
         // Customizable test function
@@ -190,7 +190,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
         assertEquals(toUpdate, updated);
 
         // Customizable test function
@@ -213,7 +213,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
         assertEquals(toUpdate, updated);
 
         // Customizable test function
@@ -233,7 +233,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         } catch (IllegalArgumentException e) {
             assertEquals(
                     testDocumentsLoader.getLoadedDocumentCount(),
-                    testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                    testClientOperations.countDocuments(getDocumentMetadata()));
         }
     }
 
@@ -254,7 +254,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() + 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
         assertArrayEquals(toSave.toArray(), saved.toArray());
 
         // Customizable test function
@@ -275,7 +275,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Get all typed documents from the index
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 0,
                 (int) this.getTestDocumentsLoader().getLoadedDocumentCount()));
 
@@ -295,7 +295,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByIdentifier() {
 
         // Get some typed documents from the index depending of the default page size
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocuments(getDocumentMetaData()));
+        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocuments(getDocumentMetadata()));
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
@@ -317,7 +317,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Get all typed documents sorted from the index
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 getSortField(),
                 0,
                 (int) this.getTestDocumentsLoader().getLoadedDocumentCount()));
@@ -339,7 +339,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByPage() {
 
         // Define the page parameters
-        long documentsCount = testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation());
+        long documentsCount = testClientOperations.countDocuments(getDocumentMetadata());
         Assert.isTrue(documentsCount > 0, "No document loaded");
         int pageSize = getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
@@ -347,7 +347,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Get typed documents from the index for the first page
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 0,
                 getPageSize()));
 
@@ -360,7 +360,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Get typed documents from the index for the last page
         initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 nbPages - 1,
                 getPageSize()));
 
@@ -380,7 +380,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByPageSorted() {
 
         // Define the page parameters
-        long documentsCount = testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation());
+        long documentsCount = testClientOperations.countDocuments(getDocumentMetadata());
         Assert.isTrue(documentsCount > 0, "No document loaded");
         int pageSize = getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
@@ -388,7 +388,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Fixture for first page
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 getSortField(),
                 0,
                 getPageSize()));
@@ -403,7 +403,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         // Fixture for last page
         initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
-                getDocumentMetaData(),
+                getDocumentMetadata(),
                 getSortField(),
                 nbPages - 1,
                 pageSize));
@@ -518,7 +518,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         getRepository().deleteAll();
 
-        assertEquals(0, testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+        assertEquals(0, testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
         customizeDeleteAll();
@@ -535,7 +535,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
     }
 
     /**
@@ -550,7 +550,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
         customizeDeleteSet(documentsToDelete);
@@ -567,7 +567,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
     }
 
     /**
@@ -583,7 +583,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
         customizeDeleteOne(id);
@@ -600,7 +600,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
     }
 
     /**
@@ -615,7 +615,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount() - 1,
-                testClientOperations.countDocuments(getDocumentMetaData().getDocumentAnnotation()));
+                testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
         customizeDeleteOne(id);

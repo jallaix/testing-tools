@@ -765,8 +765,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // Define the fixture for entities comparison
         final List<T> documents = sorted ?
-                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetaData(), sortField, (page != null) ? page : 0, pageSize) :
-                testClientOperations.findAllDocumentsPaged(getDocumentMetaData(), (page != null) ? page : 0, pageSize);
+                testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), sortField, (page != null) ? page : 0, pageSize) :
+                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), (page != null) ? page : 0, pageSize);
         final List<Resource<T>> fixture = documents
                 .stream()
                 .map(this::convertToResource)
@@ -968,7 +968,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                 throw new RuntimeException(e);
             }
             try {
-                targetEntity = mapper.treeToValue(jsonTarget, getDocumentMetaData().getDocumentClass());
+                targetEntity = mapper.treeToValue(jsonTarget, (Class<T>) getDocumentMetadata().getType());
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
@@ -1074,7 +1074,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         // Get the identifier value
         String id;
         try {
-            id = getDocumentMetaData().getDocumentIdField().get(entity).toString();
+            id = getDocumentMetadata().getIdProperty().getField().get(entity).toString();
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -1082,12 +1082,12 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         // Convert entity into resource
         Resource<T> result = new Resource<>(entity);
         result.add(new Link(getWebServiceUrl().toString() + "/" + id));
-        result.add(new Link(getWebServiceUrl().toString() + "/" + id, getDocumentMetaData().getDocumentClass().getSimpleName().toLowerCase()));
+        result.add(new Link(getWebServiceUrl().toString() + "/" + id, getDocumentMetadata().getType().getSimpleName().toLowerCase()));
 
         // Set the resource identifier to "null" : the identifier isn't sent in the entity response
-        getDocumentMetaData().getDocumentIdField().setAccessible(true);
+        getDocumentMetadata().getIdProperty().getField().setAccessible(true);
         try {
-            getDocumentMetaData().getDocumentIdField().set(result.getContent(), null);
+            getDocumentMetadata().getIdProperty().getField().set(result.getContent(), null);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -1169,7 +1169,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     private URI getWebServiceUrl(boolean profile) {
 
-        final String webContext = "/" + getDocumentMetaData().getDocumentClass().getSimpleName().toLowerCase() + "s";
+        final String webContext = "/" + getDocumentMetadata().getType().getSimpleName().toLowerCase() + "s";
 
         try {
             return new URI("http", null, "localhost", serverPort, (profile ? "/profile" : "") + webContext, null, null);

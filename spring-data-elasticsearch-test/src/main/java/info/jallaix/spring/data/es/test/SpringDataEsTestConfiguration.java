@@ -85,7 +85,7 @@ public class SpringDataEsTestConfiguration {
      */
     @Bean
     public TestClientOperations testClientOperations() throws IOException {
-        return new TestClientOperations(elasticsearchClient());
+        return new TestClientOperations(elasticsearchClient(), elasticsearchTemplate());
     }
 
     /**

@@ -1,7 +1,6 @@
 package info.jallaix.spring.data.es.test.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
@@ -9,7 +8,8 @@ import org.elasticsearch.search.sort.SortOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentEntity;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -31,6 +31,11 @@ public class TestClientOperations {
     private Client esClient;
 
     /**
+     * Elasticsearch operations
+     */
+    private ElasticsearchOperations esOperations;
+
+    /**
      * Logger
      */
     private static final Logger logger = LoggerFactory.getLogger(TestClientOperations.class);
@@ -44,9 +49,12 @@ public class TestClientOperations {
      * Constructor with Elasticsearch client
      *
      * @param esClient the Elasticsearch client
+     * @param esOperations the Elasticsearch operations
      */
-    public TestClientOperations(Client esClient) {
+    public TestClientOperations(Client esClient, ElasticsearchOperations esOperations) {
+
         this.esClient = esClient;
+        this.esOperations = esOperations;
     }
 
     /**
@@ -55,10 +63,10 @@ public class TestClientOperations {
      * @param documentMetadata The Elastic document metadata
      * @return The number of typed documents found
      */
-    public long countDocuments(Document documentMetadata) {
+    public long countDocuments(ElasticsearchPersistentEntity documentMetadata) {
 
-        return esClient.prepareCount(documentMetadata.indexName())
-                .setTypes(documentMetadata.type())
+        return esClient.prepareCount(documentMetadata.getIndexName())
+                .setTypes(documentMetadata.getIndexType())
                 .get()
                 .getCount();
     }
@@ -73,12 +81,12 @@ public class TestClientOperations {
      */
     public <T> T findDocument(Class<T> documentClass, String id) {
 
-        DocumentMetaData<T> documentMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(documentClass);
+        final ElasticsearchPersistentEntity documentMetadata = DocumentMetaDataBuilder.buildDocumentMetadata(esOperations, documentClass);
 
         return fromJson(
                 documentClass,
                 esClient
-                        .prepareGet(documentMetaData.getDocumentAnnotation().indexName(), documentMetaData.getDocumentAnnotation().type(), id)
+                        .prepareGet(documentMetadata.getIndexName(), documentMetadata.getIndexType(), id)
                         .get());
     }
 
@@ -86,46 +94,46 @@ public class TestClientOperations {
      * Find all typed documents in the index.
      *
      * @param <T>              The document type
-     * @param documentMetaData The Elasticsearch document metadata
+     * @param documentMetadata The Elasticsearch document metadata
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocuments(DocumentMetaData<T> documentMetaData) {
-        return findAllDocumentsPaged(documentMetaData, 0, 10);
+    public <T> List<T> findAllDocuments(ElasticsearchPersistentEntity documentMetadata) {
+        return findAllDocumentsPaged(documentMetadata, 0, 10);
     }
 
     /**
      * Find all typed document with sorting
      *
      * @param <T>               The document type
-     * @param documentMetaData  The Elasticsearch document metadata
+     * @param documentMetadata  The Elasticsearch document metadata
      * @param documentSortField The document sort field
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsSorted(DocumentMetaData<T> documentMetaData, Field documentSortField) {
-        return findAllDocumentsPagedSorted(documentMetaData, documentSortField, 0, 10);
+    public <T> List<T> findAllDocumentsSorted(ElasticsearchPersistentEntity documentMetadata, Field documentSortField) {
+        return findAllDocumentsPagedSorted(documentMetadata, documentSortField, 0, 10);
     }
 
     /**
      * Find all typed document with sorting
      *
      * @param <T>              The document type
-     * @param documentMetaData The Elasticsearch document metadata
+     * @param documentMetadata The Elasticsearch document metadata
      * @param pageNo           The page number to get
      * @param pageSize         The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsPaged(DocumentMetaData<T> documentMetaData, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsPaged(ElasticsearchPersistentEntity documentMetadata, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
-                esClient.prepareSearch(documentMetaData.getDocumentAnnotation().indexName())
-                        .setTypes(documentMetaData.getDocumentAnnotation().type())
+                esClient.prepareSearch(documentMetadata.getIndexName())
+                        .setTypes(documentMetadata.getIndexType())
                         .setFrom(pageNo * pageSize)
                         .setSize(pageSize)
                         .execute()
                         .actionGet()
                         .getHits()
                         .spliterator(), false)
-                .map(hit -> fromJson(documentMetaData.getDocumentClass(), hit))
+                .map(hit -> fromJson((Class<T>) documentMetadata.getType(), hit))
                 .collect(Collectors.toList());
     }
 
@@ -133,17 +141,17 @@ public class TestClientOperations {
      * Find all typed document belonging to a page with sorting
      *
      * @param <T>               The document type
-     * @param documentMetaData  The Elasticsearch document metadata
+     * @param documentMetadata  The Elasticsearch document metadata
      * @param documentSortField The document sort field
      * @param pageNo            The page number to get
      * @param pageSize          The page size
      * @return The typed documents found
      */
-    public <T> List<T> findAllDocumentsPagedSorted(DocumentMetaData<T> documentMetaData, Field documentSortField, int pageNo, int pageSize) {
+    public <T> List<T> findAllDocumentsPagedSorted(ElasticsearchPersistentEntity documentMetadata, Field documentSortField, int pageNo, int pageSize) {
 
         return StreamSupport.stream(
-                esClient.prepareSearch(documentMetaData.getDocumentAnnotation().indexName())
-                        .setTypes(documentMetaData.getDocumentAnnotation().type())
+                esClient.prepareSearch(documentMetadata.getIndexName())
+                        .setTypes(documentMetadata.getIndexType())
                         .setFrom(pageNo * pageSize)
                         .setSize(pageSize)
                         .addSort(documentSortField.getName(), SortOrder.DESC)
@@ -151,7 +159,7 @@ public class TestClientOperations {
                         .actionGet()
                         .getHits()
                         .spliterator(), false)
-                .map(hit -> fromJson(documentMetaData.getDocumentClass(), hit))
+                .map(hit -> fromJson((Class<T>) documentMetadata.getType(), hit))
                 .collect(Collectors.toList());
     }
 

@@ -1,10 +1,9 @@
 package info.jallaix.spring.data.es.test.util;
 
-import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
-
-import java.lang.reflect.Field;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentEntity;
+import org.springframework.util.Assert;
 
 /**
  * Utility class about Elasticsearch document metadata.
@@ -12,48 +11,22 @@ import java.lang.reflect.Field;
 public class DocumentMetaDataBuilder {
 
     /**
+     * <p>
      * Build a bean holding document metadata.
+     * </p>
+     * <p>
+     * Uses the same code as the {@link org.springframework.data.elasticsearch.core.ElasticsearchTemplate#getPersistentEntityFor(Class)} private method.
+     * </p>
      *
-     * @param <T>           The document type
+     * @param esOperations  Elasticsearch operations
      * @param documentClass The document class
      * @return The document metadata
      */
-    public static <T> DocumentMetaData<T> buildDocumentMetadata(Class<T> documentClass) {
+    public static ElasticsearchPersistentEntity buildDocumentMetadata(ElasticsearchOperations esOperations, Class<?> documentClass) {
 
-        Document documentAnnotation = getDocumentAnnotation(documentClass);
-        Field documentIdField = getIdentifierField(documentClass);
+        Assert.isTrue(documentClass.isAnnotationPresent(Document.class), "Unable to identify index name. " + documentClass.getSimpleName()
+                + " is not a Document. Make sure the document class is annotated with @Document(indexName=\"foo\")");
 
-        return new DocumentMetaData<>(documentClass, documentAnnotation, documentIdField);
-    }
-
-    /**
-     * Find Elastic metadata (index, type, ...) of the tested document.
-     *
-     * @param <T>           The document type
-     * @param documentClass The document class
-     * @return The document metadata
-     */
-    private static <T> Document getDocumentAnnotation(Class<T> documentClass) {
-        return documentClass.getDeclaredAnnotation(Document.class); // Get annotation from document class
-    }
-
-    /**
-     * Find the field used as identifier for the document.
-     *
-     * @param <T>           The document type
-     * @param documentClass The document class
-     * @return The identifier field
-     */
-    private static <T> Field getIdentifierField(Class<T> documentClass) {
-
-        // Find field in document class with @Id annotation
-        for (Field field : documentClass.getDeclaredFields()) {
-            if (field.getDeclaredAnnotation(Id.class) != null) {
-                field.setAccessible(true);
-                return field;
-            }
-        }
-
-        return null;
+        return esOperations.getElasticsearchConverter().getMappingContext().getPersistentEntity(documentClass);
     }
 }

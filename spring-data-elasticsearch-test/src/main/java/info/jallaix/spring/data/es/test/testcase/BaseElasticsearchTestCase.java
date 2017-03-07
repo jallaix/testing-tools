@@ -1,7 +1,5 @@
 package info.jallaix.spring.data.es.test.testcase;
 
-import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
-import info.jallaix.spring.data.es.test.util.DocumentMetaDataBuilder;
 import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -12,6 +10,8 @@ import org.junit.Rule;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentEntity;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
 import java.io.Serializable;
@@ -55,16 +55,14 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     @Autowired
     private TestDocumentsLoader testDocumentsLoader;
 
+    @Autowired
+    private ElasticsearchOperations esOperations;
+
     /**
      * Elasticsearch document metadata
      */
     @Getter(AccessLevel.PROTECTED)
-    private DocumentMetaData<T> documentMetaData;
-
-    /**
-     * Set of entity classes used for mapping
-     */
-    private Set<Class<?>> entityClasses;
+    private ElasticsearchPersistentEntity documentMetadata;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -126,7 +124,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
      * Return the list of document to store in the index before each test
      * @return The list of document to store in the index
      */
-    protected abstract List<T> getStoredDocuments();
+    protected abstract List<?> getStoredDocuments();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -139,12 +137,11 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     public void feedElasticIndex() {
 
         // Initialize document metadata
-        documentMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(initDocumentClass());
+        documentMetadata = esOperations.getElasticsearchConverter().getMappingContext().getPersistentEntity(initDocumentClass());
 
         // Load documents into index
         testDocumentsLoader.initElasticIndex(
-                documentMetaData,
-                entityClasses,
+                documentMetadata,
                 getStoredDocuments());
     }
 
@@ -165,16 +162,6 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
         return testDocumentsLoader;
     }
 
-    /**
-     * Set entity classes for Elasticsearch mapping.
-     *
-     * @param entityClasses Entity classes that contain Elasticsearch mapping data
-     */
-    @SuppressWarnings("unused")
-    protected void setEntityMappings(Set<Class<?>> entityClasses) {
-        this.entityClasses = entityClasses;
-    }
-
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                           Tested document metadata                                             */
@@ -190,7 +177,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
         try {
             @SuppressWarnings("unchecked")
-            ID id = (ID) documentMetaData.getDocumentIdField().get(document);
+            ID id = (ID) documentMetadata.getIdProperty().getField().get(document);
             return id;
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);

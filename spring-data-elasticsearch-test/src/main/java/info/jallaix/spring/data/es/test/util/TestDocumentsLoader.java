@@ -1,18 +1,14 @@
 package info.jallaix.spring.data.es.test.util;
 
-import info.jallaix.spring.data.es.test.bean.DocumentMetaData;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.query.IndexQuery;
-import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
-import org.springframework.data.elasticsearch.core.query.SearchQuery;
+import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersistentEntity;
+import org.springframework.data.elasticsearch.core.query.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class is used to load documents in an Elasticsearch index.
@@ -30,11 +26,6 @@ public class TestDocumentsLoader {
      */
     private long loadedDocumentCount = 0;
 
-    /**
-     * Logger
-     */
-    private static final Logger logger = LoggerFactory.getLogger(TestDocumentsLoader.class);
-
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                               Public methods                                                   */
@@ -50,43 +41,60 @@ public class TestDocumentsLoader {
     }
 
     /**
-     * Create an Elasticsearch index with sample documents
+     * Create an Elasticsearch index with sample documents.
      *
-     * @param documentMetaData Elastic document metadata
-     * @param entityClasses    Set of entity classes used for mapping
+     * @param documentMetadata Elasticsearch document metadata
      * @param documentsToStore Tested class name
      */
-    public void initElasticIndex(DocumentMetaData<?> documentMetaData, Set<Class<?>> entityClasses, List<?> documentsToStore) {
+    public void initElasticIndex(final ElasticsearchPersistentEntity documentMetadata, final List<?> documentsToStore) {
 
-        for (Class<?> entityClass : entityClasses) {
+        // Get mapping classes from the documents to store
+        Set<Class<?>> mappingClasses =
+                documentsToStore
+                        .stream()
+                        .map(Object::getClass)
+                        .distinct()
+                        .collect(Collectors.toSet());
 
-            // Clean the index data
-            if (esOperations.indexExists(entityClass))
-                esOperations.deleteIndex(entityClass);
+        // Define type mappings in the Elasticsearch indices
+        for (Class<?> mappingClass : mappingClasses) {
 
-            // Apply mapping for the document type
-            esOperations.putMapping(entityClass);
+            // Clean data if necessary
+            if (esOperations.indexExists(mappingClass)) {
+                DeleteQuery deleteQuery = new DeleteQuery();
+                deleteQuery.setQuery(QueryBuilders.matchAllQuery());
+                esOperations.delete(deleteQuery, mappingClass);
+            }
+            // Create index for the mapping class if it doesn't already exist
+            else
+                esOperations.createIndex(mappingClass);
+
+            // Define mapping for the document type
+            esOperations.putMapping(mappingClass);
         }
 
-        List<IndexQuery> indexQueries = new ArrayList<IndexQuery>();
+        // Bulk index documents to store
+        List<IndexQuery> indexQueries = new ArrayList<>();
         for (Object documentToStore : documentsToStore) {
-            DocumentMetaData<?> documentToStoreMetaData = DocumentMetaDataBuilder.buildDocumentMetadata(documentToStore.getClass());
+            final ElasticsearchPersistentEntity documentToStoreMetadata = DocumentMetaDataBuilder.buildDocumentMetadata(esOperations, documentToStore.getClass());
             IndexQueryBuilder indexQueryBuilder = new IndexQueryBuilder();
             try {
-                indexQueryBuilder.withId(String.class.cast(documentToStoreMetaData.getDocumentIdField().get(documentToStore)));
+                indexQueryBuilder.withId(String.class.cast(documentToStoreMetadata.getIdProperty().getField().get(documentToStore)));
             } catch (IllegalAccessException e) {
                 throw new RuntimeException(e);
             }
-            indexQueryBuilder.withObject(documentsToStore);
+            indexQueryBuilder.withObject(documentToStore);
 
             indexQueries.add(indexQueryBuilder.build());
         }
         esOperations.bulkIndex(indexQueries);
 
+        // Refresh indices for data to be searchable
+        for (Class<?> mappingClass : mappingClasses)
+            esOperations.refresh(mappingClass, true);
+
         // Number of loaded documents
-        loadedDocumentCount = countLoadedDocuments(
-                documentMetaData.getDocumentAnnotation().indexName(),
-                documentMetaData.getDocumentAnnotation().type());
+        loadedDocumentCount = indexQueries.stream().filter(indexQuery -> indexQuery.getObject().getClass().equals(documentMetadata.getType())).count();
     }
 
     /**
@@ -104,23 +112,5 @@ public class TestDocumentsLoader {
      */
     public long getLoadedDocumentCount() {
         return loadedDocumentCount;
-    }
-
-
-    /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                              Private methods                                                   */
-    /*----------------------------------------------------------------------------------------------------------------*/
-
-    /**
-     * Count the number of documents loaded in the index
-     *
-     * @param indexName    Index name
-     * @param documentType Document type
-     */
-    private long countLoadedDocuments(String indexName, String documentType) {
-        SearchQuery query = new NativeSearchQuery(QueryBuilders.matchAllQuery());
-        query.addIndices(indexName);
-        query.addTypes(documentType);
-        return esOperations.count(query);
     }
 }
