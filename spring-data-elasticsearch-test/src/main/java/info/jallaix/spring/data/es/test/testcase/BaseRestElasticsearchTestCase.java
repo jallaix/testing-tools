@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+import info.jallaix.spring.data.es.test.bean.BaseElasticsearchTestFixture;
+import info.jallaix.spring.data.es.test.bean.BaseRestElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
 import org.apache.commons.codec.Charsets;
@@ -19,7 +21,6 @@ import org.springframework.data.rest.webmvc.RestMediaTypes;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.PagedResources;
 import org.springframework.hateoas.Resource;
-import org.springframework.hateoas.mvc.TypeReferences;
 import org.springframework.http.*;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
@@ -48,15 +49,15 @@ import static org.junit.Assert.fail;
  * <li>Creating an entity returns a {@code 400 Bad Request} HTTP status code if no entity data is provided.</li>
  * <li>
  * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
- * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreate} method.
+ * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnCreate} method.
  * </li>
  * <li>
  * Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
- * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>
  * Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
- * The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * The entity to insert is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
  * </li>
  * </ul>
  * <p/>
@@ -65,25 +66,25 @@ import static org.junit.Assert.fail;
  * <ul>
  * <li>
  * Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
- * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
  * </li>
  * <li>
  * Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
- * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>Getting all entities returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.</li>
  * <li>
  * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+ * The sort field if defined by the {@link BaseElasticsearchTestFixture#getSortField()} method.
  * </li>
  * <li>
  * Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+ * The page size if defined by the {@link BaseElasticsearchTestFixture#getPageSize()} method.
  * </li>
  * <li>
  * Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
- * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
- * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+ * The sort field if defined by the {@link BaseElasticsearchTestFixture#getSortField()} method.
+ * The page size if defined by the {@link BaseElasticsearchTestFixture#getPageSize()} method.
  * </li>
  * </ul>
  * <p/>
@@ -100,23 +101,23 @@ import static org.junit.Assert.fail;
  * <ul>
  * <li>
  * Updating an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
- * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>
  * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
- * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity identifier is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>
  * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
- * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnUpdate} method.
+ * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnUpdate} method.
  * </li>
  * <li>
  * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
- * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
  * </li>
  * <li>
  * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
- * The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+ * The entity to update is defined by the {@link BaseElasticsearchTestFixture#newDocumentToUpdate()} method.
  * </li>
  * </ul>
  * <p/>
@@ -125,19 +126,19 @@ import static org.junit.Assert.fail;
  * <ul>
  * <li>
  * Patching an entity returns a {@code 405 Method Not Allowed} HTTP status code if no identifier is provided.
- * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>
  * Patching an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
- * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The existing entity identifier is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  * <li>
  * Patching an entity returns {@code 404 Not Found} HTTP status code if there is no existing language to update.
- * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
  * </li>
  * <li>
  * Patching an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
- * The entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+ * The entity to patch is defined by the {@link BaseElasticsearchTestFixture#newDocumentToUpdate()} method.
  * </li>
  * </ul>
  * <p/>
@@ -147,11 +148,11 @@ import static org.junit.Assert.fail;
  * <li>Deleting an entity returns a {@code 405 Method Not Allowed } HTTP status code if no identifier is provided.</li>
  * <li>
  * Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
- * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+ * The entity to delete is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
  * </li>
  * <li>
  * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
- * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+ * The entity to delete is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
  * </li>
  */
 @SuppressWarnings("unused")
@@ -223,59 +224,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
-     * Return an object with some getters matching the {@link T} entity getters.
-     * The values returned by the getters must be different than those returned by the
-     * {@link BaseElasticsearchTestCase#newExistingDocument()} getters so that patching tests may occur.
+     * Return a fixture for the REST tests.
      *
-     * @return An object with some getters matching the {@link T} entity getters.
+     * @return A fixture for REST testing
      */
-    protected abstract Object newObjectForPatch();
-
-    /**
-     * Get the resource type for JSON/Object mapping.
-     *
-     * @return The resource type
-     */
-    protected abstract TypeReferences.ResourceType<T> getResourceType();
-
-    /**
-     * Get the paged resources type for JSON/Object mapping.
-     *
-     * @return The paged resources type
-     */
-    protected abstract TypeReferences.PagedResourcesType<Resource<T>> getPagedResourcesType();
-
-    /**
-     * Return a map of entities linked to a list of expected validation errors that occur when attempting to create an entity.
-     * Each entity must hold a set of properties that causes some validation errors to occur.
-     *
-     * @return The map of entities linked to a list of expected validation errors
-     */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnCreate();
-
-    /**
-     * Return a map of entities linked to a list of expected validation errors that occur when attempting to update an entity.
-     * Each entity must hold a set of properties that causes some validation errors to occur.
-     *
-     * @return The map of entities linked to a list of expected validation errors
-     */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnUpdate();
-
-    /**
-     * Return a map of objects linked to a list of expected validation errors that occur when attempting to patch an entity.
-     * Each object must hold a set of properties that causes some validation errors to occur.
-     *
-     * @return The map of objects linked to a list of expected validation errors
-     */
-    protected abstract Map<Object, List<ValidationError>> getExpectedValidationErrorsOnPatch();
-
-    /**
-     * Return a map of entities linked to a list of expected validation errors that occur when attempting to delete an entity.
-     * Each entity must hold a set of properties that causes some validation errors to occur.
-     *
-     * @return The map of entities linked to a list of expected validation errors
-     */
-    protected abstract Map<T, List<ValidationError>> getExpectedValidationErrorsOnDelete();
+    protected abstract BaseRestElasticsearchTestFixture<T> getRestTestFixture();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -293,32 +246,33 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Creating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnCreate()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnCreate()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createInvalidEntity() {
-        getExpectedValidationErrorsOnCreate().forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getRestTestFixture().getExpectedValidationErrorsOnCreate()
+                .forEach((entity, errors) -> postEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
      * Creating an entity returns a {@code 409 Conflict} HTTP status code if it already exists.
-     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createDuplicateEntity() {
-        postEntity(newExistingDocument(), HttpStatus.CONFLICT, true);
+        postEntity(getTestFixture().newExistingDocument(), HttpStatus.CONFLICT, true);
     }
 
     /**
      * Creating an entity returns a {@code 201 Created} HTTP status code if the entry doesn't already exist and the entity argument is valid.
-     * The entity to insert is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     * The entity to insert is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Create.class)
     @Test
     public void createValidEntity() {
-        postEntity(newDocumentToInsert(), HttpStatus.CREATED, false);
+        postEntity(getTestFixture().newDocumentToInsert(), HttpStatus.CREATED, false);
     }
 
 
@@ -328,22 +282,22 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Getting an entity returns a {@code 404 Not Found} HTTP status code if there is no entity found.
-     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
     public void findMissingEntity() {
-        getEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+        getEntity(getTestFixture().newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
     }
 
     /**
      * Getting an entity returns this entity in HATEOAS format and a {@code 200 Ok} HTTP status code if the entity is found.
-     * The existing entity is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The existing entity is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.FindOne.class)
     @Test
     public void findExistingEntity() {
-        getEntity(newExistingDocument(), HttpStatus.OK, false);
+        getEntity(getTestFixture().newExistingDocument(), HttpStatus.OK, false);
     }
 
     /**
@@ -357,7 +311,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Getting all entities sorted returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
-     * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
+     * The sort field if defined by the {@link BaseElasticsearchTestFixture#getSortField()} method.
      */
     @Category(RestTestedMethod.FindAll.class)
     @Test
@@ -367,7 +321,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Getting all entities paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
-     * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+     * The page size if defined by the {@link BaseElasticsearchTestFixture#getPageSize()} method.
      */
     @Category(RestTestedMethod.FindAllPageable.class)
     @Test
@@ -380,8 +334,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Getting all entities sorted and paged returns these entities in HATEOAS format and a {@code 200 Ok} HTTP status code.
-     * The sort field if defined by the {@link BaseRestElasticsearchTestCase#getSortField()} method.
-     * The page size if defined by the {@link BaseRestElasticsearchTestCase#getPageSize()} method.
+     * The sort field if defined by the {@link BaseElasticsearchTestFixture#getSortField()} method.
+     * The page size if defined by the {@link BaseElasticsearchTestFixture#getPageSize()} method.
      */
     @Category(RestTestedMethod.FindAllPageable.class)
     @Test
@@ -403,7 +357,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Category(RestTestedMethod.Exist.class)
     @Test
     public void headExistingEntity() {
-        headEntity(newExistingDocument(), HttpStatus.NO_CONTENT, false);
+        headEntity(getTestFixture().newExistingDocument(), HttpStatus.NO_CONTENT, false);
     }
 
     /**
@@ -412,7 +366,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Category(RestTestedMethod.Exist.class)
     @Test
     public void headMissingEntity() {
-        headEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+        headEntity(getTestFixture().newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
     }
 
     /**
@@ -441,42 +395,42 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
-     * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The existing entity identifier is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateEmptyEntity() {
-        putEntity(newExistingDocument(), HttpStatus.BAD_REQUEST, true, null, true);
+        putEntity(getTestFixture().newExistingDocument(), HttpStatus.BAD_REQUEST, true, null, true);
     }
 
     /**
      * Updating an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnUpdate()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnUpdate()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateInvalidEntity() {
-        getExpectedValidationErrorsOnUpdate().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
+        getRestTestFixture().getExpectedValidationErrorsOnUpdate().forEach((entity, errors) -> putEntity(entity, HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
      * Updating an entity returns {@code 404 Not Found} HTTP status code if there is no existing entity to update.
-     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateMissingEntity() {
-        putEntity(newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
+        putEntity(getTestFixture().newDocumentToInsert(), HttpStatus.NOT_FOUND, true);
     }
 
     /**
      * Updating an existing entity returns a {@code 200 Ok} HTTP status code as well as the updated resource that matches the resource in the request.
-     * The entity to update is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToUpdate()} method.
+     * The entity to update is defined by the {@link BaseElasticsearchTestFixture#newDocumentToUpdate()} method.
      */
     @Category(RestTestedMethod.Update.class)
     @Test
     public void updateValidEntity() {
-        putEntity(newDocumentToUpdate(), HttpStatus.OK, false);
+        putEntity(getTestFixture().newDocumentToUpdate(), HttpStatus.OK, false);
     }
 
 
@@ -492,81 +446,81 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Test
     public void patchEntityWithoutId() {
 
-        Object patch = newObjectForPatch();
+        Object patch = getRestTestFixture().newObjectForPatch();
         patchEntity(true, null, patch, HttpStatus.METHOD_NOT_ALLOWED, true);
         patchEntity(false, null, patch, HttpStatus.METHOD_NOT_ALLOWED, true);
     }
 
     /**
      * Patching an entity returns a {@code 400 Bad Request} HTTP status code if no entity is provided.
-     * The existing entity identifier is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
-     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
+     * The existing entity identifier is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestFixture#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchEmptyEntity() {
 
-        Object patch = newObjectForPatch();
-        patchEntity(true, newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
-        patchEntity(false, newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
+        Object patch = getRestTestFixture().newObjectForPatch();
+        patchEntity(true, getTestFixture().newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
+        patchEntity(false, getTestFixture().newExistingDocument(), patch, HttpStatus.BAD_REQUEST, true, null, true);
     }
 
     /**
      * Patching an entity returns a {@code 400 Bad Request} HTTP status code if it contains invalid fields.
-     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
-     * Invalid patch properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnPatch()} method.
+     * The existing entity to patch is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
+     * Invalid patch properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnPatch()} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchInvalidEntity() {
 
-        T entity = newExistingDocument();
-        getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(true, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
-        getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(false, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
+        T entity = getTestFixture().newExistingDocument();
+        getRestTestFixture().getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(true, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
+        getRestTestFixture().getExpectedValidationErrorsOnPatch().forEach((patch, errors) -> patchEntity(false, entity, patch, HttpStatus.BAD_REQUEST, true, errors, false));
     }
 
     /**
      * Patching an entity returns {@code 404 Not Found} HTTP status code if there is no existing entity to patch.
-     * The missing entity is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
-     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
+     * The missing entity is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestFixture#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchMissingEntity() {
 
-        Object patch = newObjectForPatch();
-        patchEntity(true, newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
-        patchEntity(false, newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
+        Object patch = getRestTestFixture().newObjectForPatch();
+        patchEntity(true, getTestFixture().newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
+        patchEntity(false, getTestFixture().newDocumentToInsert(), patch, HttpStatus.NOT_FOUND, true);
     }
 
     /**
      * Patching an existing entity (JSON Patch) returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
-     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
-     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
+     * The existing entity to patch is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestFixture#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchValidEntity() throws IllegalAccessException {
 
         // The entity to patch and the patch itself
-        final T entity = newExistingDocument();
-        Object patch = newObjectForPatch();
+        final T entity = getTestFixture().newExistingDocument();
+        Object patch = getRestTestFixture().newObjectForPatch();
 
         patchEntity(false, entity, patch, HttpStatus.OK, false);
     }
 
     /**
      * Patching an existing entity (JSON Merge Patch) returns a {@code 200 Ok} HTTP status code as well as the patched resource that matches the resource in the request.
-     * The existing entity to patch is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
-     * The patch is defined by the {@link BaseRestElasticsearchTestCase#newObjectForPatch} method.
+     * The existing entity to patch is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
+     * The patch is defined by the {@link BaseRestElasticsearchTestFixture#newObjectForPatch} method.
      */
     @Category(RestTestedMethod.Patch.class)
     @Test
     public void patchValidEntityWithMerge() throws IllegalAccessException {
 
         // The entity to patch and the patch itself
-        final T entity = newExistingDocument();
-        Object patch = newObjectForPatch();
+        final T entity = getTestFixture().newExistingDocument();
+        Object patch = getRestTestFixture().newObjectForPatch();
 
         patchEntity(true, entity, patch, HttpStatus.OK, false);
     }
@@ -587,32 +541,33 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
     /**
      * Deleting an entity returns a {@code 404 Not Found } HTTP status code if it doesn't exist.
-     * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newDocumentToInsert()} method.
+     * The entity to delete is defined by the {@link BaseElasticsearchTestFixture#newDocumentToInsert()} method.
      */
     @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteMissingEntity() {
-        deleteEntity(getIdFieldValue(newDocumentToInsert()), HttpStatus.NOT_FOUND, false, null);
+        deleteEntity(getIdFieldValue(getTestFixture().newDocumentToInsert()), HttpStatus.NOT_FOUND, false, null);
     }
 
     /**
      * Deleting an entity returns a {@code 400 Bad Request} HTTP status code if it is not valid.
-     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestCase#getExpectedValidationErrorsOnDelete()} method.
+     * Invalid entity properties are defined by the {@link BaseRestElasticsearchTestFixture#getExpectedValidationErrorsOnDelete()} method.
      */
     @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteInvalidEntity() {
-        getExpectedValidationErrorsOnDelete().forEach((entity, errors) -> deleteEntity(getIdFieldValue(entity), HttpStatus.BAD_REQUEST, true, errors));
+        getRestTestFixture().getExpectedValidationErrorsOnDelete()
+                .forEach((entity, errors) -> deleteEntity(getIdFieldValue(entity), HttpStatus.BAD_REQUEST, true, errors));
     }
 
     /**
      * Deleting an entity returns a {@code 204 No Content } HTTP status code it exists and no validation error occurs.
-     * The entity to delete is defined by the {@link BaseRestElasticsearchTestCase#newExistingDocument()} method.
+     * The entity to delete is defined by the {@link BaseElasticsearchTestFixture#newExistingDocument()} method.
      */
     @Category(RestTestedMethod.Delete.class)
     @Test
     public void deleteExistingEntity() {
-        deleteEntity(getIdFieldValue(newExistingDocument()), HttpStatus.NO_CONTENT, false, null);
+        deleteEntity(getIdFieldValue(getTestFixture().newExistingDocument()), HttpStatus.NO_CONTENT, false, null);
     }
 
 
@@ -653,13 +608,13 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             getWebServiceUrl(),
                             HttpMethod.POST,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             if (expectedError)  // No exception thrown whereas one is expected
                 fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
 
             else {  // No exception is expected, verify the expected HTTP status code and response body then return the response
-                assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
+                assertExistingBody(expectedStatus, false, responseEntity, entity);
 
                 return responseEntity;
             }
@@ -698,7 +653,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             expectedResource.getId().getHref(),
                             HttpMethod.GET,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             if (expectedError)  // No exception thrown whereas one is expected
                 fail("Should return a " + expectedStatus.value() + " " + expectedStatus.name() + " response");
@@ -752,8 +707,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         // Get user-defined sort field and page size
-        final Field sortField = getSortField();
-        final int pageSize = (page == null) ? defaultPageSize : getPageSize();  // Spring Data REST always get paged resources even if
+        final Field sortField = getTestFixture().getSortField();
+        final int pageSize = (page == null) ? defaultPageSize : getTestFixture().getPageSize();  // Spring Data REST always get paged resources even if
 
         // Build GET request parameters for sorting and paging
         final String urlParams =
@@ -782,7 +737,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                         getWebServiceUrl() + urlParams,
                         HttpMethod.GET,
                         httpEntity,
-                        getPagedResourcesType());
+                        getRestTestFixture().getPagedResourcesType());
 
         // Assert the entity response matches the expected one
         assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));                      // Verify HTTP status code
@@ -816,7 +771,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             expectedResource.getId().getHref(),
                             HttpMethod.HEAD,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             assertMissingBody(expectedStatus, expectedError, responseEntity);
         }
@@ -840,7 +795,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                         getWebServiceUrl(),
                         HttpMethod.HEAD,
                         httpEntity,
-                        getPagedResourcesType());
+                        getRestTestFixture().getPagedResourcesType());
 
         // Assert the entity response matches the expected one
         assertThat(responseEntity, is(notNullValue()));
@@ -899,7 +854,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.PUT,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             assertExistingBody(expectedStatus, expectedError, responseEntity, entity);
         }
@@ -941,6 +896,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @param emptyBody      To send an empty body
      * @return The updated entity resource
      */
+    @SuppressWarnings("unchecked")
     protected ResponseEntity<Resource<T>> patchEntity(boolean merge, T entity, Object patch, HttpStatus expectedStatus, boolean expectedError, List<ValidationError> expectedErrors, boolean emptyBody) {
 
         final T targetEntity;
@@ -951,7 +907,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             // Set empty body to the HTTP entity
             httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
             targetEntity = null;
-        } else {
+        }
+        else {
             final ObjectMapper mapper = new ObjectMapper(); // JSON converter
 
             // Convert the object for patching to a JSON merge patch
@@ -990,7 +947,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.PATCH,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             assertExistingBody(expectedStatus, expectedError, responseEntity, targetEntity);
         }
@@ -1024,7 +981,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                             getWebServiceUrl() + (id == null ? "" : "/" + id),
                             HttpMethod.DELETE,
                             httpEntity,
-                            getResourceType());
+                            getRestTestFixture().getResourceType());
 
             assertMissingBody(expectedStatus, expectedError, responseEntity);
         }
@@ -1103,7 +1060,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     protected int getTotalPages() {
 
         long totalElements = this.getTestDocumentsLoader().getLoadedDocumentCount();
-        int pageSize = getPageSize();
+        int pageSize = getTestFixture().getPageSize();
 
         return (int) Math.ceil((double) totalElements / (double) pageSize);
     }
@@ -1130,8 +1087,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     protected List<Link> getPagedLanguagesLinks(boolean sorted, Integer page) {
 
         final int pageNo = (page == null) ? 0 : page;
-        final String fieldToSortBy = getSortField().getName();
-        final int pageSize = (page == null) ? defaultPageSize : getPageSize();
+        final String fieldToSortBy = getTestFixture().getSortField().getName();
+        final int pageSize = (page == null) ? defaultPageSize : getTestFixture().getPageSize();
         final long documentCount = this.getTestDocumentsLoader().getLoadedDocumentCount();
         final long lastPage = documentCount / pageSize - (documentCount % pageSize == 0 ? 1 : 0);
 

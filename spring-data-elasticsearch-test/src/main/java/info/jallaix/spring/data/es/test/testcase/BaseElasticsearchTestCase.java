@@ -1,5 +1,6 @@
 package info.jallaix.spring.data.es.test.testcase;
 
+import info.jallaix.spring.data.es.test.bean.BaseElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -15,11 +16,9 @@ import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersiste
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
 import java.io.Serializable;
-import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -81,55 +80,18 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
         terminateElasticIndex();    // Free fixture data
     }
 
-    /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                               Abstract methods                                                 */
-    /*----------------------------------------------------------------------------------------------------------------*/
-
-    /**
-     * Return a new document for insertion.
-     *
-     * @return A document that will be inserted
-     */
-    protected abstract T newDocumentToInsert();
-
-    /**
-     * Return a new document for update.
-     *
-     * @return A document that will update an existing one
-     */
-    protected abstract T newDocumentToUpdate();
-
-    /**
-     * Return a new existing document.
-     *
-     * @return A document that exists
-     */
-    protected abstract T newExistingDocument();
-
-    /**
-     * Return the sort field
-     *
-     * @return The sort field
-     */
-    protected abstract Field getSortField();
-
-    /**
-     * Return the size of a page to get
-     *
-     * @return The size of a page to get
-     */
-    protected abstract int getPageSize();
-
-    /**
-     * Return the list of document to store in the index before each test
-     * @return The list of document to store in the index
-     */
-    protected abstract List<?> getStoredDocuments();
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                                Data loading                                                    */
     /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Return a fixture for the tests.
+     *
+     * @return A fixture for testing
+     */
+    protected abstract BaseElasticsearchTestFixture<T> getTestFixture();
 
     /**
      * Create an Elasticsearch index and type and load custom data in it.
@@ -142,7 +104,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
         // Load documents into index
         testDocumentsLoader.initElasticIndex(
                 documentMetadata,
-                getStoredDocuments());
+                getTestFixture().getStoredDocuments());
     }
 
     /**

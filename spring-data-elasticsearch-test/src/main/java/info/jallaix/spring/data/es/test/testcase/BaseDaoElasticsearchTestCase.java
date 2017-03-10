@@ -122,7 +122,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Category(DaoTestedMethod.Index.class)
     @Test(expected = IllegalArgumentException.class)
     public void indexNullDocument() {
-
         getRepository().index(null);
     }
 
@@ -132,7 +131,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Category(DaoTestedMethod.Save.class)
     @Test(expected = IllegalArgumentException.class)
     public void saveNullDocument() {
-
         getRepository().save((T) null);
     }
 
@@ -143,7 +141,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void indexNewDocument() {
 
-        T toInsert = newDocumentToInsert();
+        T toInsert = getTestFixture().newDocumentToInsert();
         T inserted = getRepository().index(toInsert);
 
         assertEquals(
@@ -162,7 +160,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void saveNewDocument() {
 
-        T toInsert = newDocumentToInsert();
+        T toInsert = getTestFixture().newDocumentToInsert();
         T inserted = getRepository().save(toInsert);
 
         assertEquals(
@@ -181,7 +179,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void indexExistingDocument() {
 
-        T toUpdate = newDocumentToUpdate();
+        T toUpdate = getTestFixture().newDocumentToUpdate();
 
         // Get custom data before saving to make it available to customizeSaveExistingDocument()
         Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
@@ -204,7 +202,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void saveExistingDocument() {
 
-        T toUpdate = newDocumentToUpdate();
+        T toUpdate = getTestFixture().newDocumentToUpdate();
 
         // Get custom data before saving to make it available to customizeSaveExistingDocument()
         Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
@@ -228,7 +226,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void saveNullDocuments() {
 
         try {
-            getRepository().save(Arrays.asList(newDocumentToInsert(), newDocumentToUpdate(), null));
+            getRepository().save(Arrays.asList(getTestFixture().newDocumentToInsert(), getTestFixture().newDocumentToUpdate(), null));
             fail("IllegalArgumentException must be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals(
@@ -244,7 +242,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void saveDocuments() {
 
-        List<T> toSave = Arrays.asList(newDocumentToInsert(), newDocumentToUpdate());
+        List<T> toSave = Arrays.asList(getTestFixture().newDocumentToInsert(), getTestFixture().newDocumentToUpdate());
 
         // Get custom data before saving to make it available to customizeSaveDocuments()
         Object customData = getCustomDataOnSaveDocuments(toSave);
@@ -318,12 +316,12 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         // Get all typed documents sorted from the index
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
-                getSortField(),
+                getTestFixture().getSortField(),
                 0,
                 (int) this.getTestDocumentsLoader().getLoadedDocumentCount()));
 
         // Repository search
-        Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
+        Sort sorting = new Sort(Sort.Direction.DESC, getTestFixture().getSortField().getName());
         List<T> foundList = new ArrayList<>();
         getRepository().findAll(sorting)
                 .forEach(foundList::add);
@@ -341,7 +339,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         // Define the page parameters
         long documentsCount = testClientOperations.countDocuments(getDocumentMetadata());
         Assert.isTrue(documentsCount > 0, "No document loaded");
-        int pageSize = getPageSize();
+        int pageSize = getTestFixture().getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
@@ -349,7 +347,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 0,
-                getPageSize()));
+                getTestFixture().getPageSize()));
 
         // Repository search
         List<T> foundList = new ArrayList<>();
@@ -362,7 +360,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 nbPages - 1,
-                getPageSize()));
+                getTestFixture().getPageSize()));
 
         // Repository search
         foundList.clear();
@@ -382,19 +380,19 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         // Define the page parameters
         long documentsCount = testClientOperations.countDocuments(getDocumentMetadata());
         Assert.isTrue(documentsCount > 0, "No document loaded");
-        int pageSize = getPageSize();
+        int pageSize = getTestFixture().getPageSize();
         Assert.isTrue(pageSize > 0, "Page size must be positive");
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Fixture for first page
         List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
-                getSortField(),
+                getTestFixture().getSortField(),
                 0,
-                getPageSize()));
+                getTestFixture().getPageSize()));
 
         // Repository search
-        Sort sorting = new Sort(Sort.Direction.DESC, getSortField().getName());
+        Sort sorting = new Sort(Sort.Direction.DESC, getTestFixture().getSortField().getName());
         List<T> foundList = new ArrayList<>();
         getRepository().findAll(new PageRequest(0, pageSize, sorting))
                 .forEach(foundList::add);
@@ -404,7 +402,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         // Fixture for last page
         initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
-                getSortField(),
+                getTestFixture().getSortField(),
                 nbPages - 1,
                 pageSize));
 
@@ -435,7 +433,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findOneMissingDocument() {
 
-        ID id = getIdFieldValue(newDocumentToInsert());
+        ID id = getIdFieldValue(getTestFixture().newDocumentToInsert());
         T found = getRepository().findOne(id);
 
         assertNull(found);
@@ -448,7 +446,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findOneExistingDocument() {
 
-        T document = customizeFindOneFixture(newExistingDocument());
+        T document = customizeFindOneFixture(getTestFixture().newExistingDocument());
         T found = getRepository().findOne(getIdFieldValue(document));
 
         assertNotNull(found);
@@ -475,7 +473,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void existOneMissingDocument() {
 
-        ID id = getIdFieldValue(newDocumentToInsert());
+        ID id = getIdFieldValue(getTestFixture().newDocumentToInsert());
         boolean exists = getRepository().exists(id);
 
         assertFalse(exists);
@@ -488,7 +486,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void existOneExistingDocument() {
 
-        ID id = getIdFieldValue(newDocumentToUpdate());
+        ID id = getIdFieldValue(getTestFixture().newDocumentToUpdate());
         boolean exists = getRepository().exists(id);
 
         assertTrue(exists);
@@ -500,7 +498,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Category(DaoTestedMethod.Count.class)
     @Test
     public void countDocuments() {
-
         assertEquals(testDocumentsLoader.getLoadedDocumentCount(), getRepository().count());
     }
 
@@ -531,7 +528,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Category(DaoTestedMethod.DeleteAllById.class)
     public void deletingMissingDocumentSet() {
 
-        getRepository().delete(Collections.singletonList(newDocumentToInsert()));
+        getRepository().delete(Collections.singletonList(getTestFixture().newDocumentToInsert()));
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
@@ -545,7 +542,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteExistingDocumentSet() {
 
-        List<T> documentsToDelete = Collections.singletonList(newExistingDocument());
+        List<T> documentsToDelete = Collections.singletonList(getTestFixture().newExistingDocument());
         getRepository().delete(documentsToDelete);
 
         assertEquals(
@@ -563,7 +560,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneMissingDocument() {
 
-        getRepository().delete(newDocumentToInsert());
+        getRepository().delete(getTestFixture().newDocumentToInsert());
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
@@ -577,7 +574,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneExistingDocument() {
 
-        T documentToUpdate = newDocumentToUpdate();
+        T documentToUpdate = getTestFixture().newDocumentToUpdate();
         ID id = getIdFieldValue(documentToUpdate);
         getRepository().delete(documentToUpdate);
 
@@ -596,7 +593,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneMissingDocumentById() {
 
-        getRepository().delete(getIdFieldValue(newDocumentToInsert()));
+        getRepository().delete(getIdFieldValue(getTestFixture().newDocumentToInsert()));
 
         assertEquals(
                 testDocumentsLoader.getLoadedDocumentCount(),
@@ -610,7 +607,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void deleteOneExistingDocumentById() {
 
-        ID id = getIdFieldValue(newDocumentToUpdate());
+        ID id = getIdFieldValue(getTestFixture().newDocumentToUpdate());
         getRepository().delete(id);
 
         assertEquals(
