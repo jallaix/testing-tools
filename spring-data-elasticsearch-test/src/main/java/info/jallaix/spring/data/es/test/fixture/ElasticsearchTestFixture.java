@@ -1,4 +1,4 @@
-package info.jallaix.spring.data.es.test.bean;
+package info.jallaix.spring.data.es.test.fixture;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Created by JAX on 10/03/2017.
  */
-public interface BaseElasticsearchTestFixture<T> {
+public interface ElasticsearchTestFixture<T> {
     /**
      * Return a new document for insertion.
      *

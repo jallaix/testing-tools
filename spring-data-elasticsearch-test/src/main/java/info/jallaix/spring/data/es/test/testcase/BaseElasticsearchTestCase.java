@@ -1,6 +1,6 @@
 package info.jallaix.spring.data.es.test.testcase;
 
-import info.jallaix.spring.data.es.test.bean.BaseElasticsearchTestFixture;
+import info.jallaix.spring.data.es.test.fixture.ElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -54,6 +54,9 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     @Autowired
     private TestDocumentsLoader testDocumentsLoader;
 
+    /**
+     * Elasticsearch operations
+     */
     @Autowired
     private ElasticsearchOperations esOperations;
 
@@ -91,7 +94,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
      *
      * @return A fixture for testing
      */
-    protected abstract BaseElasticsearchTestFixture<T> getTestFixture();
+    protected abstract ElasticsearchTestFixture<T> getTestFixture();
 
     /**
      * Create an Elasticsearch index and type and load custom data in it.

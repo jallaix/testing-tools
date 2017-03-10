@@ -1,5 +1,7 @@
 package info.jallaix.spring.data.es.test.testcase;
 
+import info.jallaix.spring.data.es.test.customizer.BaseDaoTestsCustomizer;
+import info.jallaix.spring.data.es.test.customizer.DaoTestsCustomizer;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
 import info.jallaix.spring.data.es.test.util.TestDocumentsLoader;
 import org.elasticsearch.action.ActionRequestValidationException;
@@ -77,6 +79,11 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Autowired
     protected TestClientOperations testClientOperations;
 
+    /**
+     * Tests customizer
+     */
+    private DaoTestsCustomizer<T> customizer;
+
 
     /*----------------------------------------------------------------------------------------------------------------*/
     /*                                           Ignored tests system                                                 */
@@ -109,6 +116,36 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                     DaoTestedMethod.DeleteById.class));
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                            Tests customization                                                 */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Set a tests customizer. A {@link BaseDaoTestsCustomizer} is defined if {@code null} is provided.
+     *
+     * @param customizer The customizer to set
+     */
+    @SuppressWarnings("unused")
+    public void setCustomizer(DaoTestsCustomizer<T> customizer) {
+        if (customizer == null)
+            this.customizer = new BaseDaoTestsCustomizer<>();
+        else
+            this.customizer = customizer;
+    }
+
+    /**
+     * Get a tests customizer. A {@link BaseDaoTestsCustomizer} is defined if none already exists.
+     *
+     * @return The customizer found
+     */
+    private DaoTestsCustomizer<T> getCustomizer() {
+        if (this.customizer == null)
+            this.customizer = new BaseDaoTestsCustomizer<>();
+
+        return this.customizer;
     }
 
 
@@ -150,7 +187,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(toInsert, inserted);
 
         // Customizable test function
-        customizeSaveNewDocument(toInsert, inserted);
+        getCustomizer().customizeSaveNewDocument(toInsert, inserted);
     }
 
     /**
@@ -169,7 +206,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(toInsert, inserted);
 
         // Customizable test function
-        customizeSaveNewDocument(toInsert, inserted);
+        getCustomizer().customizeSaveNewDocument(toInsert, inserted);
     }
 
     /**
@@ -182,7 +219,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         T toUpdate = getTestFixture().newDocumentToUpdate();
 
         // Get custom data before saving to make it available to customizeSaveExistingDocument()
-        Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
+        Object customData = getCustomizer().getCustomDataOnSaveExistingDocument(toUpdate);
 
         T updated = getRepository().index(toUpdate);
 
@@ -192,7 +229,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(toUpdate, updated);
 
         // Customizable test function
-        customizeSaveExistingDocument(toUpdate, updated, customData);
+        getCustomizer().customizeSaveExistingDocument(toUpdate, updated, customData);
     }
 
     /**
@@ -205,7 +242,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         T toUpdate = getTestFixture().newDocumentToUpdate();
 
         // Get custom data before saving to make it available to customizeSaveExistingDocument()
-        Object customData = getCustomDataOnSaveExistingDocument(toUpdate);
+        Object customData = getCustomizer().getCustomDataOnSaveExistingDocument(toUpdate);
 
         T updated = getRepository().save(toUpdate);
 
@@ -215,7 +252,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(toUpdate, updated);
 
         // Customizable test function
-        customizeSaveExistingDocument(toUpdate, updated, customData);
+        getCustomizer().customizeSaveExistingDocument(toUpdate, updated, customData);
     }
 
     /**
@@ -245,7 +282,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         List<T> toSave = Arrays.asList(getTestFixture().newDocumentToInsert(), getTestFixture().newDocumentToUpdate());
 
         // Get custom data before saving to make it available to customizeSaveDocuments()
-        Object customData = getCustomDataOnSaveDocuments(toSave);
+        Object customData = getCustomizer().getCustomDataOnSaveDocuments(toSave);
 
         List<T> saved = new ArrayList<>(2);
         getRepository().save(toSave).forEach(saved::add);
@@ -256,7 +293,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(toSave.toArray(), saved.toArray());
 
         // Customizable test function
-        customizeSaveDocuments(toSave, saved, customData);
+        getCustomizer().customizeSaveDocuments(toSave, saved, customData);
     }
 
 
@@ -272,7 +309,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocuments() {
 
         // Get all typed documents from the index
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
+        List<T> initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 0,
                 (int) this.getTestDocumentsLoader().getLoadedDocumentCount()));
@@ -293,7 +330,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsByIdentifier() {
 
         // Get some typed documents from the index depending of the default page size
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocuments(getDocumentMetadata()));
+        List<T> initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocuments(getDocumentMetadata()));
         List<ID> initialKeys = initialList.stream()
                 .map(this::getIdFieldValue)
                 .collect(Collectors.toList());
@@ -314,7 +351,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     public void findAllDocumentsSorted() {
 
         // Get all typed documents sorted from the index
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
+        List<T> initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
                 getTestFixture().getSortField(),
                 0,
@@ -344,7 +381,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Get typed documents from the index for the first page
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
+        List<T> initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 0,
                 getTestFixture().getPageSize()));
@@ -357,7 +394,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Get typed documents from the index for the last page
-        initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
+        initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPaged(
                 getDocumentMetadata(),
                 nbPages - 1,
                 getTestFixture().getPageSize()));
@@ -385,7 +422,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         int nbPages = (int) documentsCount / pageSize + (documentsCount % pageSize == 0 ? 0 : 1);
 
         // Fixture for first page
-        List<T> initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
+        List<T> initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
                 getTestFixture().getSortField(),
                 0,
@@ -400,7 +437,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertArrayEquals(initialList.toArray(), foundList.toArray());
 
         // Fixture for last page
-        initialList = customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
+        initialList = getCustomizer().customizeFindAllFixture(testClientOperations.findAllDocumentsPagedSorted(
                 getDocumentMetadata(),
                 getTestFixture().getSortField(),
                 nbPages - 1,
@@ -446,7 +483,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
     @Test
     public void findOneExistingDocument() {
 
-        T document = customizeFindOneFixture(getTestFixture().newExistingDocument());
+        T document = getCustomizer().customizeFindOneFixture(getTestFixture().newExistingDocument());
         T found = getRepository().findOne(getIdFieldValue(document));
 
         assertNotNull(found);
@@ -518,7 +555,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         assertEquals(0, testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
-        customizeDeleteAll();
+        getCustomizer().customizeDeleteAll();
     }
 
     /**
@@ -550,7 +587,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
-        customizeDeleteSet(documentsToDelete);
+        getCustomizer().customizeDeleteSet(documentsToDelete);
     }
 
     /**
@@ -583,7 +620,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
-        customizeDeleteOne(id);
+        getCustomizer().customizeDeleteOne(String.class.cast(id));
     }
 
     /**
@@ -615,101 +652,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
                 testClientOperations.countDocuments(getDocumentMetadata()));
 
         // Customizable test function
-        customizeDeleteOne(id);
-    }
-
-
-    /*----------------------------------------------------------------------------------------------------------------*/
-    /*                                                Tests customization                                             */
-    /*----------------------------------------------------------------------------------------------------------------*/
-
-    /**
-     * Add additional content to the {@link #saveNewDocument()} and {@link #indexNewDocument()} tests.
-     *
-     * @param toInsert Document to insert
-     * @param inserted Inserted document
-     */
-    protected void customizeSaveNewDocument(T toInsert, T inserted) {
-    }
-
-    /**
-     * Get custom data before saving to make it available to the {@link #customizeSaveExistingDocument(Object, Object, Object)} method
-     *
-     * @param toUpdate Document to update
-     * @return The custom data
-     */
-    protected Object getCustomDataOnSaveExistingDocument(T toUpdate) {
-        return null;
-    }
-
-    /**
-     * Add additional content to the {@link #saveExistingDocument()} and {@link #indexExistingDocument()} tests.
-     *
-     * @param toUpdate   Document to update
-     * @param updated    Updated document
-     * @param customData Custom data
-     */
-    protected void customizeSaveExistingDocument(T toUpdate, T updated, Object customData) {
-    }
-
-    /**
-     * Get custom data before saving to make it available to the {@link #customizeSaveDocuments(List, List, Object)} method
-     *
-     * @param toSave Documents to save
-     * @return The custom data
-     */
-    protected Object getCustomDataOnSaveDocuments(List<T> toSave) {
-        return null;
-    }
-
-    /**
-     * Add additional content to the {@link #saveDocuments()} test.
-     *
-     * @param toSave Documents to save
-     * @param saved  Saved documents
-     */
-    protected void customizeSaveDocuments(List<T> toSave, List<T> saved, Object customData) {
-    }
-
-    /**
-     * Customize a list of typed documents used as fixture in the {@link #findAllDocuments()} and so on tests.
-     *
-     * @param fixture The list of typed documents to customize
-     * @return The list of customized typed documents
-     */
-    protected List<T> customizeFindAllFixture(final List<T> fixture) {
-        return fixture;
-    }
-
-    /**
-     * Customize a typed document used as fixture in the {@link #findOneExistingDocument()} test.
-     *
-     * @param fixture The typed document to customize
-     * @return The customized typed document
-     */
-    protected T customizeFindOneFixture(final T fixture) {
-        return fixture;
-    }
-
-    /**
-     * Add additional content to the {@link #deleteOneExistingDocument()} and {@link #deleteOneExistingDocumentById()} tests.
-     *
-     * @param id Identifier of the deleted document
-     */
-    protected void customizeDeleteOne(ID id) {
-    }
-
-    /**
-     * Add additional content to the {@link #deleteAllDocuments()} test.
-     */
-    protected void customizeDeleteAll() {
-    }
-
-    /**
-     * Add additional content to the {@link #deleteExistingDocumentSet()} test.
-     *
-     * @param toDelete List of documents to delete
-     */
-    protected void customizeDeleteSet(List<T> toDelete) {
+        getCustomizer().customizeDeleteOne(String.class.cast(id));
     }
 }

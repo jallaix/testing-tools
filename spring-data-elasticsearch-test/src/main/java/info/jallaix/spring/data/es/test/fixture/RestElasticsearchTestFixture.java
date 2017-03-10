@@ -1,5 +1,6 @@
-package info.jallaix.spring.data.es.test.bean;
+package info.jallaix.spring.data.es.test.fixture;
 
+import info.jallaix.spring.data.es.test.bean.ValidationError;
 import org.springframework.hateoas.Resource;
 import org.springframework.hateoas.mvc.TypeReferences;
 
@@ -9,12 +10,12 @@ import java.util.Map;
 /**
  * Created by JAX on 10/03/2017.
  */
-public interface BaseRestElasticsearchTestFixture<T> {
+public interface RestElasticsearchTestFixture<T> {
 
     /**
      * Return an object with some getters matching the {@link T} entity getters.
      * The values returned by the getters must be different than those returned by the
-     * {@link BaseElasticsearchTestFixture#newExistingDocument()} getters so that patching tests may occur.
+     * {@link ElasticsearchTestFixture#newExistingDocument()} getters so that patching tests may occur.
      *
      * @return An object with some getters matching the {@link T} entity getters.
      */

@@ -18,8 +18,23 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ValidationError {
 
+    /**
+     * Simple entity name
+     */
     private String entity;
+
+    /**
+     * Error message
+     */
     private String message;
+
+    /**
+     * Entity value causing the validation error
+     */
     private String invalidValue;
+
+    /**
+     * Entity property causing the validation error
+     */
     private String property;
 }
