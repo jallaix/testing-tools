@@ -100,7 +100,6 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
         if (methods.length == 0)
             testedMethods = new HashSet<>(Arrays.asList(
                     DaoTestedMethod.Index.class,
-                    DaoTestedMethod.Index.class,
                     DaoTestedMethod.Save.class,
                     DaoTestedMethod.SaveBulk.class,
                     DaoTestedMethod.FindAll.class,
