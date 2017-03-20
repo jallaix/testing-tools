@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+import info.jallaix.spring.data.es.test.customizer.BaseDaoTestsCustomizer;
+import info.jallaix.spring.data.es.test.customizer.DaoTestsCustomizer;
 import info.jallaix.spring.data.es.test.fixture.ElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.fixture.RestElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
@@ -186,9 +188,17 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     @Autowired
     private TestClientOperations testClientOperations;
 
+    /**
+     * REST template for calling server operations
+     */
     @SuppressWarnings("SpringJavaAutowiredMembersInspection")
     @Autowired
     private RestTemplate restTemplate;
+
+    /**
+     * Tests customizer
+     */
+    private DaoTestsCustomizer<T> customizer;
 
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -216,6 +226,36 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                     RestTestedMethod.Delete.class));
         else
             testedMethods = new HashSet<>(Arrays.asList(methods));
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    /*                                            Tests customization                                                 */
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    /**
+     * Set a tests customizer. A {@link BaseDaoTestsCustomizer} is defined if {@code null} is provided.
+     *
+     * @param customizer The customizer to set
+     */
+    @SuppressWarnings("unused")
+    public void setCustomizer(DaoTestsCustomizer<T> customizer) {
+        if (customizer == null)
+            this.customizer = new BaseDaoTestsCustomizer<>();
+        else
+            this.customizer = customizer;
+    }
+
+    /**
+     * Get a tests customizer. A {@link BaseDaoTestsCustomizer} is defined if none already exists.
+     *
+     * @return The customizer found
+     */
+    private DaoTestsCustomizer<T> getCustomizer() {
+        if (this.customizer == null)
+            this.customizer = new BaseDaoTestsCustomizer<>();
+
+        return this.customizer;
     }
 
 
@@ -719,9 +759,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                 );
 
         // Define the fixture for entities comparison
-        final List<T> documents = sorted ?
+        final List<T> documents = getCustomizer().customizeFindAllFixture(sorted ?
                 testClientOperations.findAllDocumentsPagedSorted(getDocumentMetadata(), sortField, (page != null) ? page : 0, pageSize) :
-                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), (page != null) ? page : 0, pageSize);
+                testClientOperations.findAllDocumentsPaged(getDocumentMetadata(), (page != null) ? page : 0, pageSize));
         final List<Resource<T>> fixture = documents
                 .stream()
                 .map(this::convertToResource)
@@ -907,8 +947,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             // Set empty body to the HTTP entity
             httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
             targetEntity = null;
-        }
-        else {
+        } else {
             final ObjectMapper mapper = new ObjectMapper(); // JSON converter
 
             // Convert the object for patching to a JSON merge patch
@@ -1129,7 +1168,16 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final String webContext = "/" + getDocumentMetadata().getType().getSimpleName().toLowerCase() + "s";
 
         try {
-            return new URI("http", null, "localhost", serverPort, (profile ? "/profile" : "") + webContext, null, null);
+            URI uri = getServerUri();
+            return new URI(getServerUri().toString() + (profile ? "/profile" : "") + webContext);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Invalid server URI", e);
+        }
+    }
+
+    protected URI getServerUri() {
+        try {
+            return new URI("http", null, "localhost", serverPort, null, null, null);
         } catch (URISyntaxException e) {
             throw new RuntimeException("Invalid server URI", e);
         }

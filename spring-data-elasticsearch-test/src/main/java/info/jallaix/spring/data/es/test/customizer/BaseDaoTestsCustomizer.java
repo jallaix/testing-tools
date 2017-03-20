@@ -71,7 +71,7 @@ public class BaseDaoTestsCustomizer<T> implements DaoTestsCustomizer<T> {
      */
     @Override
     public List<T> customizeFindAllFixture(List<T> fixture) {
-        return null;
+        return fixture;
     }
 
     /**
@@ -82,7 +82,7 @@ public class BaseDaoTestsCustomizer<T> implements DaoTestsCustomizer<T> {
      */
     @Override
     public T customizeFindOneFixture(T fixture) {
-        return null;
+        return fixture;
     }
 
     /**
