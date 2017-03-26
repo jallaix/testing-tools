@@ -14,6 +14,7 @@ import info.jallaix.spring.data.es.test.fixture.RestElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
 import org.apache.commons.codec.Charsets;
+import org.elasticsearch.common.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -681,8 +682,23 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("unused")
     protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
+        return getEntity(expectedEntity, expectedStatus, expectedError, null);
+    }
 
-        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+    /**
+     * Call the REST web service to get an entity.
+     *
+     * @param expectedEntity Expected entity to be found
+     * @param expectedStatus Expected HTTP status to assert
+     * @param expectedError  {@code true} if an error is expected
+     * @param languageRanges Language range tags
+     * @return The found entity resource
+     */
+    @SuppressWarnings("unused")
+    protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError, String languageRanges) {
+
+        // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null, languageRanges);
 
         final Resource<T> expectedResource = convertToResource(expectedEntity);
 
@@ -709,7 +725,10 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
 
         // The POST request results in an error response
         catch (HttpStatusCodeException e) {
-            assertThat(e.getStatusCode(), is(HttpStatus.NOT_FOUND));    // Verify the expected HTTP status code
+            if (expectedError)
+                assertThat(e.getStatusCode(), is(HttpStatus.NOT_FOUND));    // Verify the expected HTTP status code
+            else
+                fail("An unexpected exception was thrown.\n" + e);
         }
 
         return null;
@@ -784,9 +803,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         assertThat(responseEntity.getBody().getMetadata(), is(metadata));                   // Verify body metadata
         assertThat(responseEntity.getBody().getContent().toArray(), is(fixture.toArray())); // Verify body content
         if (totalDocuments > documents.size())                                              // Verify body links
-            assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedLanguagesLinks(sorted, page).toArray()));
+            assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedResourcesLinks(sorted, page).toArray()));
         else
-            assertThat(responseEntity.getBody().getLinks().toArray(), is(getLanguagesLinks().toArray()));
+            assertThat(responseEntity.getBody().getLinks().toArray(), is(getResourcesLinks().toArray()));
 
         return responseEntity;
     }
@@ -945,7 +964,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final HttpEntity<?> httpEntity;
         if (entity == null || emptyBody) {
             // Set empty body to the HTTP entity
-            httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
+            httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8, null);
             targetEntity = null;
         } else {
             final ObjectMapper mapper = new ObjectMapper(); // JSON converter
@@ -973,7 +992,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             final JsonNode jsonPatchNode = merge ? jsonMerge : JsonDiff.asJson(jsonSource, jsonTarget);
 
             // Set the patch value to the HTTP entity's body
-            httpEntity = convertToHttpEntity(jsonPatchNode.toString(), merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
+            httpEntity = convertToHttpEntity(jsonPatchNode.toString(), merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8, null);
         }
 
         // Identifier of the entity resource to update
@@ -1041,7 +1060,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The converted entity
      */
     protected HttpEntity<?> convertToHttpEntity(Object entity) {
-        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON);
+        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON, null);
+    }
+
+    /**
+     * Convert an entity to an HTTP entity with Hal+Json content type.
+     *
+     * @param entity The entity to convert
+     * @param languageRanges Language range tags
+     * @return The converted entity
+     */
+    protected HttpEntity<?> convertToHttpEntity(Object entity, String languageRanges) {
+        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON, languageRanges);
     }
 
     /**
@@ -1049,14 +1079,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      *
      * @param entity      The entity to convert
      * @param contentType The content type to set
+     * @param languageRanges Language range tags
      * @return The converted entity
      */
-    protected HttpEntity<?> convertToHttpEntity(Object entity, MediaType contentType) {
+    protected HttpEntity<?> convertToHttpEntity(Object entity, MediaType contentType, String languageRanges) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(contentType);
+        if (StringUtils.isNotBlank(languageRanges))
+            headers.add(HttpHeaders.ACCEPT_LANGUAGE, languageRanges);
 
         // Define headers and body
-        return new HttpEntity<>(entity, new HttpHeaders() {{
-            setContentType(contentType);
-        }});
+        return new HttpEntity<>(entity, headers);
     }
 
     /**
@@ -1105,11 +1139,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Get expected HATEOAS links when requesting language resources.
+     * Get expected HATEOAS links when requesting resources.
      *
      * @return A list of HATEOAS links
      */
-    protected List<Link> getLanguagesLinks() {
+    protected List<Link> getResourcesLinks() {
 
         return Arrays.asList(
                 new Link(getWebServiceUrl().toString()),
@@ -1117,13 +1151,13 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     }
 
     /**
-     * Get expected HATEOAS links when requesting paged language resources
+     * Get expected HATEOAS links when requesting paged resources
      *
      * @param sorted {@code true} if entities are sorted
      * @param page   {@code null} if no page is request, else a page number starting from 0
      * @return A list of HATEOAS links
      */
-    protected List<Link> getPagedLanguagesLinks(boolean sorted, Integer page) {
+    protected List<Link> getPagedResourcesLinks(boolean sorted, Integer page) {
 
         final int pageNo = (page == null) ? 0 : page;
         final String fieldToSortBy = getTestFixture().getSortField().getName();
