@@ -187,7 +187,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("SpringJavaAutowiredMembersInspection")
     @Autowired
-    private TestClientOperations testClientOperations;
+    protected TestClientOperations testClientOperations;
 
     /**
      * REST template for calling server operations
@@ -741,7 +741,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("unused")
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities() {
-        return getEntities(false, null);
+        return getEntities((String) null);
+    }
+
+    /**
+     * Call the REST web service to get all entities.
+     *
+     * @param languageRanges Language range tags
+     * @return The found entity resources
+     */
+    @SuppressWarnings("unused")
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(String languageRanges) {
+        return getEntities(false, languageRanges);
     }
 
     /**
@@ -751,7 +762,18 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The found entity resources
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted) {
-        return getEntities(sorted, null);
+        return getEntities(sorted, (String) null);
+    }
+
+    /**
+     * Call the REST web service to get all entities.
+     *
+     * @param sorted         {@code true} if entities are sorted
+     * @param languageRanges Language range tags
+     * @return The found entity resources
+     */
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, String languageRanges) {
+        return getEntities(sorted, null, languageRanges);
     }
 
     /**
@@ -762,12 +784,24 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The found entity resources
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
+        return getEntities(sorted, page, null);
+    }
 
-        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
+    /**
+     * Call the REST web service to get all entities.
+     *
+     * @param sorted         {@code true} if entities are sorted
+     * @param page           {@code null} if no page is request, else a page number starting from 0
+     * @param languageRanges Language range tags
+     * @return The found entity resources
+     */
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page, String languageRanges) {
+
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null, languageRanges);             // Define Hal+Json HTTP entity
 
         // Get user-defined sort field and page size
         final Field sortField = getTestFixture().getSortField();
-        final int pageSize = (page == null) ? defaultPageSize : getTestFixture().getPageSize();  // Spring Data REST always get paged resources even if
+        final int pageSize = (page == null) ? defaultPageSize : getTestFixture().getPageSize(); // Spring Data REST always get paged resources
 
         // Build GET request parameters for sorting and paging
         final String urlParams =
@@ -1066,7 +1100,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Convert an entity to an HTTP entity with Hal+Json content type.
      *
-     * @param entity The entity to convert
+     * @param entity         The entity to convert
      * @param languageRanges Language range tags
      * @return The converted entity
      */
@@ -1077,8 +1111,8 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
     /**
      * Convert an entity to an HTTP entity with the specified content type.
      *
-     * @param entity      The entity to convert
-     * @param contentType The content type to set
+     * @param entity         The entity to convert
+     * @param contentType    The content type to set
      * @param languageRanges Language range tags
      * @return The converted entity
      */
