@@ -700,7 +700,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         // Define Hal+Json HTTP entity
         final HttpEntity<?> httpEntity = convertToHttpEntity(null, languageRanges);
 
-        final Resource<T> expectedResource = convertToResource(expectedEntity);
+        final Resource<T> expectedResource = convertToResource(getCustomizer().customizeFindOneFixture(expectedEntity));
 
         try {
             // Send a GET request
@@ -741,7 +741,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("unused")
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities() {
-        return getEntities((String) null);
+        return getEntities(null);
     }
 
     /**

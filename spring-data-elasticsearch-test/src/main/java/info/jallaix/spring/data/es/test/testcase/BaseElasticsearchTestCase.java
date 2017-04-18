@@ -16,8 +16,6 @@ import org.springframework.data.elasticsearch.core.mapping.ElasticsearchPersiste
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
 import java.io.Serializable;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Set;
 
@@ -102,7 +100,7 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     public void feedElasticIndex() {
 
         // Initialize document metadata
-        documentMetadata = esOperations.getElasticsearchConverter().getMappingContext().getPersistentEntity(initDocumentClass());
+        documentMetadata = esOperations.getElasticsearchConverter().getMappingContext().getPersistentEntity(getDocumentClass());
 
         // Load documents into index
         testDocumentsLoader.initElasticIndex(
@@ -190,9 +188,16 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
     /*----------------------------------------------------------------------------------------------------------------*/
 
     /**
+     * Get the persistent document class
+     *
+     * @return The persistent document class
+     */
+    protected abstract Class<T> getDocumentClass();
+
+    /**
      * Initialize the document class
      */
-    private Class<T> initDocumentClass() {
+    /*private Class<T> initDocumentClass() {
 
         // Find document class
         final ParameterizedType superClass = (ParameterizedType) getClass().getGenericSuperclass();
@@ -200,5 +205,5 @@ public abstract class BaseElasticsearchTestCase<T, ID extends Serializable, R ex
 
         //noinspection unchecked
         return (Class<T>) types[0];
-    }
+    }*/
 }
