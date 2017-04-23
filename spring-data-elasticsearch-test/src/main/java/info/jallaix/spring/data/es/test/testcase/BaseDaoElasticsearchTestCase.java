@@ -140,7 +140,7 @@ public abstract class BaseDaoElasticsearchTestCase<T, ID extends Serializable, R
      *
      * @return The customizer found
      */
-    private DaoTestsCustomizer<T> getCustomizer() {
+    protected DaoTestsCustomizer<T> getCustomizer() {
         if (this.customizer == null)
             this.customizer = new BaseDaoTestsCustomizer<>();
 
