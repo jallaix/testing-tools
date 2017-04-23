@@ -7,14 +7,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.github.fge.jsonpatch.mergepatch.JsonMergePatch;
+import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.customizer.BaseDaoTestsCustomizer;
 import info.jallaix.spring.data.es.test.customizer.DaoTestsCustomizer;
 import info.jallaix.spring.data.es.test.fixture.ElasticsearchTestFixture;
 import info.jallaix.spring.data.es.test.fixture.RestElasticsearchTestFixture;
-import info.jallaix.spring.data.es.test.bean.ValidationError;
 import info.jallaix.spring.data.es.test.util.TestClientOperations;
 import org.apache.commons.codec.Charsets;
-import org.elasticsearch.common.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -252,7 +251,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      *
      * @return The customizer found
      */
-    private DaoTestsCustomizer<T> getCustomizer() {
+    protected DaoTestsCustomizer<T> getCustomizer() {
         if (this.customizer == null)
             this.customizer = new BaseDaoTestsCustomizer<>();
 
@@ -682,23 +681,9 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("unused")
     protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError) {
-        return getEntity(expectedEntity, expectedStatus, expectedError, null);
-    }
-
-    /**
-     * Call the REST web service to get an entity.
-     *
-     * @param expectedEntity Expected entity to be found
-     * @param expectedStatus Expected HTTP status to assert
-     * @param expectedError  {@code true} if an error is expected
-     * @param languageRanges Language range tags
-     * @return The found entity resource
-     */
-    @SuppressWarnings("unused")
-    protected ResponseEntity<Resource<T>> getEntity(T expectedEntity, HttpStatus expectedStatus, boolean expectedError, String languageRanges) {
 
         // Define Hal+Json HTTP entity
-        final HttpEntity<?> httpEntity = convertToHttpEntity(null, languageRanges);
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);
 
         final Resource<T> expectedResource = convertToResource(getCustomizer().customizeFindOneFixture(expectedEntity));
 
@@ -718,6 +703,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
                 assertThat(responseEntity, is(notNullValue()));
                 assertThat(responseEntity.getStatusCode(), is(expectedStatus));
                 assertThat(responseEntity.getBody(), is(expectedResource));
+                getCustomizer().assertResponse(responseEntity);
 
                 return responseEntity;
             }
@@ -741,18 +727,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      */
     @SuppressWarnings("unused")
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities() {
-        return getEntities(null);
-    }
-
-    /**
-     * Call the REST web service to get all entities.
-     *
-     * @param languageRanges Language range tags
-     * @return The found entity resources
-     */
-    @SuppressWarnings("unused")
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(String languageRanges) {
-        return getEntities(false, languageRanges);
+        return getEntities(false);
     }
 
     /**
@@ -762,29 +737,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The found entity resources
      */
     protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted) {
-        return getEntities(sorted, (String) null);
-    }
-
-    /**
-     * Call the REST web service to get all entities.
-     *
-     * @param sorted         {@code true} if entities are sorted
-     * @param languageRanges Language range tags
-     * @return The found entity resources
-     */
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, String languageRanges) {
-        return getEntities(sorted, null, languageRanges);
-    }
-
-    /**
-     * Call the REST web service to get all entities.
-     *
-     * @param sorted {@code true} if entities are sorted
-     * @param page   {@code null} if no page is request, else a page number starting from 0
-     * @return The found entity resources
-     */
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
-        return getEntities(sorted, page, null);
+        return getEntities(sorted, null);
     }
 
     /**
@@ -792,12 +745,11 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      *
      * @param sorted         {@code true} if entities are sorted
      * @param page           {@code null} if no page is request, else a page number starting from 0
-     * @param languageRanges Language range tags
      * @return The found entity resources
      */
-    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page, String languageRanges) {
+    protected ResponseEntity<PagedResources<Resource<T>>> getEntities(boolean sorted, Integer page) {
 
-        final HttpEntity<?> httpEntity = convertToHttpEntity(null, languageRanges);             // Define Hal+Json HTTP entity
+        final HttpEntity<?> httpEntity = convertToHttpEntity(null);             // Define Hal+Json HTTP entity
 
         // Get user-defined sort field and page size
         final Field sortField = getTestFixture().getSortField();
@@ -840,6 +792,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getPagedResourcesLinks(sorted, page).toArray()));
         else
             assertThat(responseEntity.getBody().getLinks().toArray(), is(getResourcesLinks().toArray()));
+        getCustomizer().assertResponse(responseEntity);
 
         return responseEntity;
     }
@@ -998,7 +951,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
         final HttpEntity<?> httpEntity;
         if (entity == null || emptyBody) {
             // Set empty body to the HTTP entity
-            httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8, null);
+            httpEntity = convertToHttpEntity(null, merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
             targetEntity = null;
         } else {
             final ObjectMapper mapper = new ObjectMapper(); // JSON converter
@@ -1026,7 +979,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
             final JsonNode jsonPatchNode = merge ? jsonMerge : JsonDiff.asJson(jsonSource, jsonTarget);
 
             // Set the patch value to the HTTP entity's body
-            httpEntity = convertToHttpEntity(jsonPatchNode.toString(), merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8, null);
+            httpEntity = convertToHttpEntity(jsonPatchNode.toString(), merge ? MERGE_PATCH_JSON_UTF8 : JSON_PATCH_JSON_UTF8);
         }
 
         // Identifier of the entity resource to update
@@ -1094,18 +1047,7 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      * @return The converted entity
      */
     protected HttpEntity<?> convertToHttpEntity(Object entity) {
-        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON, null);
-    }
-
-    /**
-     * Convert an entity to an HTTP entity with Hal+Json content type.
-     *
-     * @param entity         The entity to convert
-     * @param languageRanges Language range tags
-     * @return The converted entity
-     */
-    protected HttpEntity<?> convertToHttpEntity(Object entity, String languageRanges) {
-        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON, languageRanges);
+        return convertToHttpEntity(entity, RestMediaTypes.HAL_JSON);
     }
 
     /**
@@ -1113,18 +1055,15 @@ public abstract class BaseRestElasticsearchTestCase<T, ID extends Serializable, 
      *
      * @param entity         The entity to convert
      * @param contentType    The content type to set
-     * @param languageRanges Language range tags
      * @return The converted entity
      */
-    protected HttpEntity<?> convertToHttpEntity(Object entity, MediaType contentType, String languageRanges) {
+    protected HttpEntity<?> convertToHttpEntity(Object entity, MediaType contentType) {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(contentType);
-        if (StringUtils.isNotBlank(languageRanges))
-            headers.add(HttpHeaders.ACCEPT_LANGUAGE, languageRanges);
 
         // Define headers and body
-        return new HttpEntity<>(entity, headers);
+        return customizer.customizeHttpEntity(new HttpEntity<>(entity, headers));
     }
 
     /**

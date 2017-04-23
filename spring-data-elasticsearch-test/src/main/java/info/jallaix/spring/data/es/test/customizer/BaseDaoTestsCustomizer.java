@@ -1,6 +1,8 @@
 package info.jallaix.spring.data.es.test.customizer;
 
 import info.jallaix.spring.data.es.test.testcase.BaseDaoElasticsearchTestCase;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -109,4 +111,23 @@ public class BaseDaoTestsCustomizer<T> implements DaoTestsCustomizer<T> {
     @Override
     public void customizeDeleteSet(List<T> toDelete) {
     }
+
+    /**
+     * Update an HTTP entity before it's sent to the server.
+     *
+     * @param httpEntity The original HTTP entity
+     * @return The updated HTTP entity
+     */
+    @Override
+    public HttpEntity<?> customizeHttpEntity(HttpEntity<?> httpEntity) {
+        return httpEntity;
+    }
+
+    /**
+     * Add additional assertions to an HTTP response.
+     *
+     * @param response The HTTP response
+     */
+    @Override
+    public void assertResponse(ResponseEntity<?> response) {}
 }
